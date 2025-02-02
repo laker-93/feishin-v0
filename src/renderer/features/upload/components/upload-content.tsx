@@ -213,7 +213,11 @@ export const UploadContent = () => {
         }
         // Check if total size exceeds 2.5 GB
         const maxSize = 2.5 * 1024 * 1024 * 1024;
-        if (totalSize > maxSize && server.username !== 'laker93') {
+        if (
+            totalSize > maxSize &&
+            server.username !== 'laker93' &&
+            server.username !== 'cargobox'
+        ) {
             setIsLimitExceededModalOpen(true);
             setIsChecking(false);
             return;
