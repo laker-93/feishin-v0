@@ -24,6 +24,7 @@ export enum AppRoute {
     LIBRARY_SONG_INFO = '/library/song/:songId',
     NOW_PLAYING = '/now-playing',
     PLAYING = '/playing',
+    PLAYLIST_BUILDER = '/playlist-builder',
     PLAYLISTS = '/playlists',
     PLAYLISTS_DETAIL_SONGS = '/playlists/:playlistId/songs',
     SEARCH = '/search/:itemType',

@@ -154,6 +154,7 @@
         "track_one": "track",
         "track_other": "tracks",
         "mixes": "mixes",
+        "playlistBuilder": "playlist builder",
         "song_one": "song",
         "song_other": "songs",
         "trackWithCount_one": "{{count}} track",
@@ -468,7 +469,8 @@
             "shared": "shared $t(entity.playlist_other)",
             "tracks": "$t(entity.track_other)",
             "upload": "$t(entity.upload)",
-            "mixes": "$t(entity.mixes)"
+            "mixes": "$t(entity.mixes)",
+            "playlistBuilder": "$t(entity.playlistBuilder)"
         },
         "trackList": {
             "artistTracks": "tracks by {{artist}}",
@@ -477,6 +479,9 @@
         },
         "mixes": {
             "title": "$t(entity.mixes)"
+        },
+        "playlistBuilder": {
+            "title": "$t(entity.playlistBuilder)"
         },
         "upload": {
             "title": "$t(entity.upload)"

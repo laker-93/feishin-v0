@@ -39,6 +39,7 @@ const InvalidRoute = lazy(
 const AboutRoute = lazy(() => import('/@/renderer/features/about/routes/about-route'));
 const DownloadRoute = lazy(() => import('/@/renderer/features/download/routes/download-route'));
 const UploadRoute = lazy(() => import('/@/renderer/features/upload/routes/upload-route'));
+const PlaylistBuilderRoute = lazy(() => import('/@/renderer/features/playlist-builder/routes/playlist-builder-route'));
 
 const HomeRoute = lazy(() => import('/@/renderer/features/home/routes/home-route'));
 
@@ -127,6 +128,11 @@ export const AppRouter = () => {
                                     element={<UploadRoute />}
                                     errorElement={<RouteErrorBoundary />}
                                     path={AppRoute.UPLOAD}
+                                />
+                                <Route
+                                    element={<PlaylistBuilderRoute />}
+                                    errorElement={<RouteErrorBoundary />}
+                                    path={AppRoute.PLAYLIST_BUILDER}
                                 />
                                 <Route
                                     element={<SearchRoute />}

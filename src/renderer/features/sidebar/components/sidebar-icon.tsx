@@ -25,6 +25,8 @@ import {
     RiUserVoiceLine,
     RiUploadFill,
     RiUploadLine,
+    RiBuilding2Fill,
+    RiBuilding2Line,
 } from 'react-icons/ri';
 import { AppRoute } from '/@/renderer/router/routes';
 import { generatePath } from 'react-router';
@@ -83,6 +85,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
         case AppRoute.UPLOAD:
             if (active) return <RiUploadFill size={size} />;
             return <RiUploadLine size={size} />;
+        case AppRoute.PLAYLIST_BUILDER:
+            if (active) return <RiBuilding2Fill size={size} />;
+            return <RiBuilding2Line size={size} />;
         default:
             return <RiHome6Line size={size} />;
     }

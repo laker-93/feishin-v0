@@ -123,6 +123,22 @@ export const NavidromeController: ControllerEndpoint = {
 
         return null;
     },
+    syncPlaylists: async (args) => {
+        const { query, apiClientProps } = args;
+
+        const res = await ndApiClient(apiClientProps).syncPlaylists({
+            body: null,
+            params: {
+                id: query.id,
+            },
+        });
+
+        if (res.status !== 200) {
+            throw new Error('Failed to delete playlist');
+        }
+
+        return null;
+    },
     getAlbumArtistDetail: async (args) => {
         const { query, apiClientProps } = args;
 

@@ -126,6 +126,36 @@ const beetsImportProgress = async (args: ImportProgressArgs): Promise<BeetImport
     };
 };
 
+let matchTracksInvocationCount = 0;
+
+const matchTracks = async ({ tracks }: { tracks: string[] }): Promise<{ matchedTracks: string[], missingTracks: string[] }> => {
+    matchTracksInvocationCount += 1;
+
+    if (matchTracksInvocationCount === 1) {
+        return {
+            matchedTracks: [
+                'Open World - dj lostboi',
+                'Arrival - Torus',
+                'Post Kyiv - D.Dan',
+            ],
+            missingTracks: [
+                'THE KID - DJ El Sobrino',
+            ],
+        };
+    }
+
+    return {
+        matchedTracks: [
+            'Open World - dj lostboi',
+            'Arrival - Torus',
+            'Post Kyiv - D.Dan',
+            'THE KID - DJ El Sobrino',
+            'Mutual Slump - DJ Shadow',
+        ],
+        missingTracks: [],
+    };
+};
+
 const validateToken = async (token: string): Promise<boolean> => {
     const res = await pymixApiClient().validateToken({ query: { token } });
     if (res.status !== 200) {
@@ -204,4 +234,5 @@ export const pymixController = {
     seratoImport,
     sync,
     validateToken,
+    matchTracks,
 };

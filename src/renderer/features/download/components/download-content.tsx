@@ -94,6 +94,21 @@ export const DownloadContent = () => {
         }
     };
 
+    const handleDownload = () => {
+        openContextModal({
+            modal: 'selectPlaylists',
+            title: t('Select Playlists to Download'),
+            innerProps: {
+                onConfirm: (selectedPlaylists) => {
+                    console.log('Selected Playlists:', selectedPlaylists);
+                    // Handle the download logic here
+                    // handleSync
+                },
+            },
+        });
+    };
+
+
     const handleSync = async () => {
         setIsSyncing(true);
         const appPath = await userFS.getAppPath();
@@ -143,7 +158,7 @@ export const DownloadContent = () => {
                 <Button
                     color={isSyncing ? 'gray' : 'blue'}
                     disabled={isSyncing}
-                    onClick={handleSync}
+                    onClick={handleDownload}
                 >
                     {isSyncing ? 'Downloading...' : 'Download'}
                 </Button>

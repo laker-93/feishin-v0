@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Group, Stack } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { CreatePlaylistBody, ServerType, SongListSort } from '/@/renderer/api/types';
+import { CreatePlaylistBody, CreatePlaylistResponse, ServerType, SongListSort } from '/@/renderer/api/types';
 import { Button, Switch, Text, TextInput, toast } from '/@/renderer/components';
 import {
     PlaylistQueryBuilder,
@@ -16,9 +16,10 @@ import { ServerFeature } from '/@/renderer/api/features-types';
 
 interface CreatePlaylistFormProps {
     onCancel: () => void;
+    onSuccess?: (response: CreatePlaylistResponse) => void;
 }
 
-export const CreatePlaylistForm = ({ onCancel }: CreatePlaylistFormProps) => {
+export const CreatePlaylistForm = ({ onCancel, onSuccess }: CreatePlaylistFormProps) => {
     const { t } = useTranslation();
     const mutation = useCreatePlaylist({});
     const server = useCurrentServer();
@@ -77,10 +78,15 @@ export const CreatePlaylistForm = ({ onCancel }: CreatePlaylistFormProps) => {
                         title: t('error.genericError', { postProcess: 'sentenceCase' }),
                     });
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     toast.success({
                         message: t('form.createPlaylist.success', { postProcess: 'sentenceCase' }),
                     });
+                    if (onSuccess) {
+                        console.log('onSuccessCb', response);
+                        onSuccess(response);
+                    }
+                    
                     onCancel();
                 },
             },

@@ -614,6 +614,56 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
 
     const updateRatingMutation = useSetRating({});
 
+    const handleDownloadPlaylists = useCallback(() => {
+        for (const item of ctx.data) {
+            downloadPlaylistsMutation?.mutate(
+                { query: { id: item.id }, serverId: item.serverId },
+                {
+                    onError: (err) => {
+                        toast.error({
+                            message: err.message,
+                            title: t('error.genericError', { postProcess: 'sentenceCase' }),
+                        });
+                    },
+                    onSuccess: () => {
+                        toast.success({
+                            message: `Playlist has been deleted`,
+                        });
+
+                        ctx.tableApi?.refreshInfiniteCache();
+                        ctx.resetGridCache?.();
+                    },
+                },
+            );
+        }
+
+        closeAllModals();
+    }, [ctx, downloadPlaylistsMutation, t]);
+
+    const openDownloadPlaylistModal = useCallback(() => {
+        openModal({
+            children: (
+                <ConfirmModal onConfirm={handleDownloadPlaylists}>
+                    <Stack>
+                        <Text>{t('common.areYouSure', { postProcess: 'sentenceCase' })}</Text>
+                        <ul>
+                            {ctx.data.map((item) => (
+                                <li key={item.id}>
+                                    <Group>
+                                        —<Text $secondary>{item.name}</Text>
+                                    </Group>
+                                </li>
+                            ))}
+                        </ul>
+                    </Stack>
+                </ConfirmModal>
+            ),
+            title: t('page.contextMenu.downloadPlaylists', { postProcess: 'titleCase' }),
+        });
+    }, [ctx.data, handleDownloadPlaylists, t]);
+
+
+
     const handleUpdateRating = useCallback(
         (rating: number) => {
             if (!ctx.dataNodes && !ctx.data) return;
@@ -830,6 +880,12 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
                 label: t('page.contextMenu.download', { postProcess: 'sentenceCase' }),
                 leftIcon: <RiDownload2Line size="1.1rem" />,
                 onClick: handleDownload,
+            },
+            downloadPlaylists: {
+                id: 'downloadPlaylists',
+                label: t('page.contextMenu.downloadPlaylists', { postProcess: 'sentenceCase' }),
+                leftIcon: <RiDeleteBinFill size="1.1rem" />,
+                onClick: openDownloadPlaylistModal,
             },
             moveToBottomOfQueue: {
                 id: 'moveToBottomOfQueue',

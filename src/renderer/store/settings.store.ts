@@ -150,6 +150,14 @@ export const sidebarItems = [
         requiresUserAccount: true,
         route: AppRoute.UPLOAD,
     },
+    {
+        disabled: false,
+        id: 'PlaylistBuilder',
+        label: i18n.t('page.sidebar.playlistBuilder'),
+        requiresElectron: true,
+        requiresUserAccount: true,
+        route: AppRoute.PLAYLIST_BUILDER,
+    },
 ];
 
 export type SortableItem<T> = {
