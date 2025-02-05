@@ -1,26 +1,24 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { api } from '/@/renderer/api';
 import { queryKeys } from '/@/renderer/api/query-keys';
-import { DeletePlaylistArgs, DeletePlaylistResponse } from '/@/renderer/api/types';
+import { SyncPlaylistArgs, SyncPlaylistResponse } from '/@/renderer/api/types';
 import { MutationHookArgs } from '/@/renderer/lib/react-query';
-import { getServerById, useCurrentServer } from '/@/renderer/store';
+import { useCurrentServer } from '/@/renderer/store';
+import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
 
-export const useSyncPlaylist = (args: MutationHookArgs) => {
+export const useSyncPlaylists = (args: MutationHookArgs) => {
     const { options } = args || {};
     const queryClient = useQueryClient();
     const server = useCurrentServer();
 
     return useMutation<
-        DeletePlaylistResponse,
+        SyncPlaylistResponse,
         AxiosError,
-        Omit<DeletePlaylistArgs, 'server' | 'apiClientProps'>,
+        Omit<SyncPlaylistArgs, 'server' | 'apiClientProps'>,
         null
     >({
         mutationFn: (args) => {
-            const server = getServerById(args.serverId);
-            if (!server) throw new Error('Server not found');
-            return api.controller.deletePlaylist({ ...args, apiClientProps: { server } });
+            return pymixController.syncPlaylists(args);
         },
         onMutate: () => {
             queryClient.cancelQueries(queryKeys.playlists.list(server?.id || ''));

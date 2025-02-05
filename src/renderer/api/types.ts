@@ -893,15 +893,13 @@ export type DeletePlaylistArgs = {
     serverId?: string;
 } & BaseEndpointArgs;
 
-
 export type SyncPlaylistResponse = null | undefined;
 
-export type SyncPlaylistQuery = { id: string };
+export type SyncPlaylistQuery = { ids: string[] };
 
 export type SyncPlaylistArgs = {
     query: SyncPlaylistQuery;
-    serverId?: string;
-} & BaseEndpointArgs;
+};
 
 // Playlist List
 export type PlaylistListResponse = BasePaginatedResponse<Playlist[]> | null | undefined;
@@ -1351,7 +1349,6 @@ export type ControllerEndpoint = {
     scrobble: (args: ScrobbleArgs) => Promise<ScrobbleResponse>;
     search: (args: SearchArgs) => Promise<SearchResponse>;
     setRating?: (args: SetRatingArgs) => Promise<RatingResponse>;
-    syncPlaylists: (args: SyncPlaylistArgs) => Promise<SyncPlaylistResponse>;
     shareItem?: (args: ShareItemArgs) => Promise<ShareItemResponse>;
     updatePlaylist: (args: UpdatePlaylistArgs) => Promise<UpdatePlaylistResponse>;
 };

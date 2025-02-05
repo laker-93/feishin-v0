@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Text, Textarea, Button, Grid, Group, Modal, TextInput, Table } from '@mantine/core';
+import { Box, Text, Button, Group, Table } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
 import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
 import { toast } from '/@/renderer/components';
 import Papa from 'papaparse';
 import { NavidromeController } from '/@/renderer/api/navidrome/navidrome-controller';
-import { useSongList } from '/@/renderer/features/songs/queries/song-list-query';
 import { CreatePlaylistResponse, SongListSort, SortOrder } from '/@/renderer/api/types';
 import { closeAllModals, openContextModal, openModal } from '@mantine/modals';
-import { useCreatePlaylist } from '/@/renderer/features/playlists/mutations/create-playlist-mutation';
 import { useCurrentServer } from '/@/renderer/store';
 import { CreatePlaylistForm } from '/@/renderer/features/playlists/components/create-playlist-form';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +23,6 @@ export const PlaylistBuilderContent = () => {
     const [parsedTracks, setParsedTracks] = useState<string[]>([]);
     const server = useCurrentServer();
 
-
     const handleDrop = (acceptedFiles) => {
         const file = acceptedFiles[0];
         Papa.parse(file, {
@@ -39,7 +36,10 @@ export const PlaylistBuilderContent = () => {
     };
 
     const handleSubmit = async () => {
-        const tracks = trackList.split('\n').map((line) => line.trim()).filter((line) => line);
+        const tracks = trackList
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line);
         try {
             const response = await pymixController.matchTracks({ tracks });
             setMatchedTracks(response.matchedTracks);
@@ -50,24 +50,21 @@ export const PlaylistBuilderContent = () => {
         }
     };
 
-
     const handleAddToPlaylist = useCallback(() => {
         openContextModal({
             innerProps: {
                 albumId: undefined,
                 artistId: undefined,
                 genreId: undefined,
-                songId: trackIds
+                songId: trackIds,
             },
             modal: 'addToPlaylist',
             size: 'md',
             title: t('page.contextMenu.addToPlaylist', { postProcess: 'sentenceCase' }),
         });
-    }, [trackIds]);
-
+    }, [trackIds, t]);
 
     const handleBuildPlaylist = () => {
-
         openModal({
             children: (
                 <CreatePlaylistForm
@@ -83,8 +80,6 @@ export const PlaylistBuilderContent = () => {
             size: 'xl',
             title: t('form.createPlaylist.title', { postProcess: 'sentenceCase' }),
         });
-
-
     };
 
     useEffect(() => {
@@ -95,21 +90,22 @@ export const PlaylistBuilderContent = () => {
                 for (const track of matchedTracks) {
                     const [title, artist] = track.split(' - ');
                     const songList = await NavidromeController.getSongList({
+                        apiClientProps: { server },
                         query: {
                             searchTerm: title,
-                            startIndex: 0,
                             sortBy: SongListSort.ALBUM,
-                            sortOrder: SortOrder.ASC
+                            sortOrder: SortOrder.ASC,
+                            startIndex: 0,
                         },
-                        apiClientProps: { server },
                     });
 
                     console.log('songList for', track, songList);
 
                     if (songList) {
-                        const matchedSong = songList.items.find((song) => 
-                            song.artistName.toLowerCase().includes(artist.toLowerCase()) || 
-                            artist.toLowerCase().includes(song.artistName.toLowerCase())
+                        const matchedSong = songList.items.find(
+                            (song) =>
+                                song.artistName.toLowerCase().includes(artist.toLowerCase()) ||
+                                artist.toLowerCase().includes(song.artistName.toLowerCase()),
                         );
                         if (matchedSong) {
                             trackIds.push(matchedSong.id);
@@ -117,7 +113,6 @@ export const PlaylistBuilderContent = () => {
                             console.log('failed to match song', track);
                         }
                     }
-
                 }
                 setTrackIds(trackIds);
             };
@@ -138,6 +133,7 @@ export const PlaylistBuilderContent = () => {
                 },
                 {
                     onError: (err) => {
+                        console.error('unable to add songs to playlist', err);
                         toast.error({
                             message: 'unable to add songs to playlist',
                             title: t('error.genericError', { postProcess: 'sentenceCase' }),
@@ -146,17 +142,26 @@ export const PlaylistBuilderContent = () => {
                 },
             );
         }
-    }, [playlistId]);
-
-
-
+    }, [playlistId, addToPlaylistMutation, server, t, trackIds]);
 
     return (
-        <Box m={2} p={20}>
-            <Text align="center" mb={20} size="xl" weight={700}>
+        <Box
+            m={2}
+            p={20}
+        >
+            <Text
+                align="center"
+                mb={20}
+                size="xl"
+                weight={700}
+            >
                 Playlist Builder
             </Text>
-            <Dropzone onDrop={handleDrop} accept={["text/csv"]} multiple={false}>
+            <Dropzone
+                accept={['text/csv']}
+                multiple={false}
+                onDrop={handleDrop}
+            >
                 <Text align="center">Drag and drop a CSV file here, or click to select a file</Text>
             </Dropzone>
             {parsedTracks.length > 0 && (
@@ -182,24 +187,40 @@ export const PlaylistBuilderContent = () => {
             {matchedTracks.length > 0 && (
                 <>
                     <Box mt={20}>
-                        <Text size="lg" weight={700}>Matched Tracks</Text>
+                        <Text
+                            size="lg"
+                            weight={700}
+                        >
+                            Matched Tracks
+                        </Text>
                         <ul>
                             {matchedTracks.map((track, index) => (
                                 <li key={index}>{track}</li>
                             ))}
                         </ul>
                     </Box>
-                    <Group position="center" mt={20}>
+                    <Group
+                        mt={20}
+                        position="center"
+                    >
                         <Button onClick={handleBuildPlaylist}>Build Playlist</Button>
                     </Group>
-                    <Group position="center" mt={20}>
+                    <Group
+                        mt={20}
+                        position="center"
+                    >
                         <Button onClick={handleAddToPlaylist}>Add To Playlist</Button>
                     </Group>
                 </>
             )}
             {missingTracks.length > 0 && (
                 <Box mt={20}>
-                    <Text size="lg" weight={700}>Missing Tracks</Text>
+                    <Text
+                        size="lg"
+                        weight={700}
+                    >
+                        Missing Tracks
+                    </Text>
                     <ul>
                         {missingTracks.map((track, index) => (
                             <li key={index}>{track}</li>

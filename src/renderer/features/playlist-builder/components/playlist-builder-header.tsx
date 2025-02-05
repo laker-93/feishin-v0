@@ -20,7 +20,9 @@ export const PlaylistBuilderHeader = () => {
                 >
                     <LibraryHeaderBar>
                         <LibraryHeaderBar.Title>
-                            {titleCase(t('page.playlistBuilder.title', { postProcess: 'titleCase' }))}
+                            {titleCase(
+                                t('page.playlistBuilder.title', { postProcess: 'titleCase' }),
+                            )}
                         </LibraryHeaderBar.Title>
                     </LibraryHeaderBar>
                 </Flex>

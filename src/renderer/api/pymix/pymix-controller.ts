@@ -1,5 +1,5 @@
 import { pymixApiClient } from '/@/renderer/api/pymix/pymix-api';
-import { BeetImportProgress, Import } from '/@/renderer/api/types';
+import { BeetImportProgress, SyncPlaylistArgs, SyncPlaylistResponse, Import } from '/@/renderer/api/types';
 
 type CreateBody = {
     email: string;
@@ -41,6 +41,22 @@ const create = async (body: CreateArgs): Promise<null> => {
 
     if (res.status !== 200) {
         throw new Error('Failed to create account');
+    }
+
+    return null;
+};
+
+const syncPlaylists = async (body: SyncPlaylistArgs): Promise<SyncPlaylistResponse> => {
+    const { query } = body;
+
+    const res = await pymixApiClient().syncPlaylists({
+        body: {
+            ids: query.ids,
+        },
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to delete playlist');
     }
 
     return null;
@@ -128,19 +144,13 @@ const beetsImportProgress = async (args: ImportProgressArgs): Promise<BeetImport
 
 let matchTracksInvocationCount = 0;
 
-const matchTracks = async ({ tracks }: { tracks: string[] }): Promise<{ matchedTracks: string[], missingTracks: string[] }> => {
+const matchTracks = async (): Promise<{ matchedTracks: string[]; missingTracks: string[] }> => {
     matchTracksInvocationCount += 1;
 
     if (matchTracksInvocationCount === 1) {
         return {
-            matchedTracks: [
-                'Open World - dj lostboi',
-                'Arrival - Torus',
-                'Post Kyiv - D.Dan',
-            ],
-            missingTracks: [
-                'THE KID - DJ El Sobrino',
-            ],
+            matchedTracks: ['Open World - dj lostboi', 'Arrival - Torus', 'Post Kyiv - D.Dan'],
+            missingTracks: ['THE KID - DJ El Sobrino'],
         };
     }
 
@@ -228,11 +238,12 @@ export const pymixController = {
     deleteDuplicates,
     librarySize,
     login,
+    matchTracks,
     rbDownload,
     rbImport,
     seratoDownload,
     seratoImport,
     sync,
+    syncPlaylists,
     validateToken,
-    matchTracks,
 };

@@ -1,7 +1,12 @@
 import { useRef, useState } from 'react';
 import { Group, Stack } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { CreatePlaylistBody, CreatePlaylistResponse, ServerType, SongListSort } from '/@/renderer/api/types';
+import {
+    CreatePlaylistBody,
+    CreatePlaylistResponse,
+    ServerType,
+    SongListSort,
+} from '/@/renderer/api/types';
 import { Button, Switch, Text, TextInput, toast } from '/@/renderer/components';
 import {
     PlaylistQueryBuilder,
@@ -86,7 +91,7 @@ export const CreatePlaylistForm = ({ onCancel, onSuccess }: CreatePlaylistFormPr
                         console.log('onSuccessCb', response);
                         onSuccess(response);
                     }
-                    
+
                     onCancel();
                 },
             },

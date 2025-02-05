@@ -5,6 +5,12 @@ const error = z.string();
 const create = z.null({});
 const login = z.null({});
 const sync = z.null({});
+const syncPlaylists = z.object({
+    nTracksExported: z.number(),
+    reason: z.string(),
+    success: z.boolean(),
+    zipPath: z.string(),
+});
 const isValidToken = z.object({
     is_valid_token: z.boolean(),
     reason: z.string(),
@@ -86,6 +92,10 @@ const syncParameters = z.object({
     tracks: z.array(track),
 });
 
+const syncPlaylistsParameters = z.object({
+    ids: z.array(z.string()),
+});
+
 const importParameters = z.object({
     public: z.boolean(),
 });
@@ -118,6 +128,7 @@ export const pymixType = {
         login: loginParameters,
         rbImport: rbImportParameters,
         sync: syncParameters,
+        syncPlaylists: syncPlaylistsParameters,
     },
     _response: {
         beetsImportProgress,
@@ -132,5 +143,6 @@ export const pymixType = {
         rbImport,
         seratoImport,
         sync,
+        syncPlaylists,
     },
 };

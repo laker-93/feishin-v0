@@ -109,6 +109,15 @@ export const contract = c.router({
             500: resultWithHeaders(pymixType._response.error),
         },
     },
+    syncPlaylists: {
+        body: pymixType._parameters.syncPlaylists,
+        method: 'POST',
+        path: 'sync/playlists',
+        responses: {
+            200: resultWithHeaders(pymixType._response.syncPlaylists),
+            500: resultWithHeaders(pymixType._response.error),
+        },
+    },
     validateToken: {
         method: 'GET',
         path: 'user/is_valid_token',
