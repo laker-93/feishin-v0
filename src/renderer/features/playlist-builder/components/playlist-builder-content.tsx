@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Box, Text, Button, Group, Table } from '@mantine/core';
+import { Box, Text, Button, Group, Table, TextInput, Divider } from '@mantine/core';
 import { Dropzone } from '@mantine/dropzone';
 import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
 import { toast } from '/@/renderer/components';
@@ -12,34 +12,34 @@ import { CreatePlaylistForm } from '/@/renderer/features/playlists/components/cr
 import { useTranslation } from 'react-i18next';
 import { useAddToPlaylist } from '/@/renderer/features/playlists/mutations/add-to-playlist-mutation';
 
+interface Track {
+    artist: string;
+    title: string;
+}
+
 export const PlaylistBuilderContent = () => {
-    const [trackList, setTrackList] = useState('');
+    const [trackList, setTrackList] = useState<Track[]>([]);
     const { t } = useTranslation();
     const [matchedTracks, setMatchedTracks] = useState<string[]>([]);
     const [missingTracks, setMissingTracks] = useState<string[]>([]);
     const [playlistId, setPlaylistId] = useState<string | null>(null);
     const [trackIds, setTrackIds] = useState<string[]>([]);
     const addToPlaylistMutation = useAddToPlaylist({});
-    const [parsedTracks, setParsedTracks] = useState<string[]>([]);
     const server = useCurrentServer();
 
     const handleDrop = (acceptedFiles) => {
         const file = acceptedFiles[0];
         Papa.parse(file, {
             complete: (results) => {
-                const tracks = results.data.map((row) => `${row[0]} - ${row[1]}`).join('\n');
+                const tracks = results.data.map((row) => ({ artist: row[0], title: row[1] }));
                 setTrackList(tracks);
-                setParsedTracks(results.data.map((row) => `${row[0]} - ${row[1]}`));
             },
             header: false,
         });
     };
 
     const handleSubmit = async () => {
-        const tracks = trackList
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => line);
+        const tracks = trackList.map((track) => `${track.artist} - ${track.title}`);
         try {
             const response = await pymixController.matchTracks({ tracks });
             setMatchedTracks(response.matchedTracks);
@@ -47,6 +47,18 @@ export const PlaylistBuilderContent = () => {
         } catch (error) {
             toast.error({ message: 'Failed to match tracks' });
             console.error('Error matching tracks:', error);
+        }
+    };
+
+    const handleAddTrack = (event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const artist = formData.get('artist') as string;
+        const title = formData.get('title') as string;
+        if (artist && title) {
+            const newTrack: Track = { artist, title };
+            setTrackList([...trackList, newTrack]);
+            event.currentTarget.reset();
         }
     };
 
@@ -164,25 +176,62 @@ export const PlaylistBuilderContent = () => {
             >
                 <Text align="center">Drag and drop a CSV file here, or click to select a file</Text>
             </Dropzone>
-            {parsedTracks.length > 0 && (
-                <Table>
-                    <thead>
-                        <tr>
-                            <th>Track</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {parsedTracks.map((track, index) => (
-                            <tr key={index}>
-                                <td>{track}</td>
+            {trackList.length > 0 && (
+                <>
+                    <Divider my="sm" />
+                    <Text
+                        align="left"
+                        mt={20}
+                        size="lg"
+                        weight={700}
+                    >
+                        Tracks
+                    </Text>
+                    <Table>
+                        <thead>
+                            <tr>
+                                <th>Artist</th>
+                                <th>Title</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </Table>
+                        </thead>
+                        <tbody>
+                            {trackList.map((track, index) => (
+                                <tr key={index}>
+                                    <td>{track.artist}</td>
+                                    <td>{track.title}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </Table>
+                </>
             )}
-
-            <Group position="center">
-                <Button onClick={handleSubmit}>Match Tracks</Button>
+            <form onSubmit={handleAddTrack}>
+                <Group
+                    grow
+                    mt="md"
+                    position="center"
+                >
+                    <TextInput
+                        name="artist"
+                        placeholder="Artist"
+                    />
+                    <TextInput
+                        name="title"
+                        placeholder="Title"
+                    />
+                    <Button type="submit">Add Track</Button>
+                </Group>
+            </form>
+            <Group
+                mt="xl"
+                position="center"
+            >
+                <Button
+                    size="lg"
+                    onClick={handleSubmit}
+                >
+                    Match Tracks
+                </Button>
             </Group>
             {matchedTracks.length > 0 && (
                 <>
