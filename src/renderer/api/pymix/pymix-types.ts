@@ -18,6 +18,7 @@ const deleteDuplicates = z.object({
 });
 const importJob = z.object({
     job_id: z.string(),
+    max_library_size_exceeded: z.boolean(),
     n_tracks_for_import: z.number(),
     reason: z.string(),
     success: z.boolean(),
