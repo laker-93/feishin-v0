@@ -1292,6 +1292,12 @@ export type BeetImportProgress = {
     result: boolean;
 };
 
+export type Import = {
+    jobId: string;
+    maxLibrarySizeExceeded: boolean;
+    success: boolean;
+};
+
 export type ControllerEndpoint = {
     addToPlaylist: (args: AddToPlaylistArgs) => Promise<AddToPlaylistResponse>;
     authenticate: (

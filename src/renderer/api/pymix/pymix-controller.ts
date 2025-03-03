@@ -1,5 +1,5 @@
 import { pymixApiClient } from '/@/renderer/api/pymix/pymix-api';
-import { BeetImportProgress } from '/@/renderer/api/types';
+import { BeetImportProgress, Import } from '/@/renderer/api/types';
 
 type CreateBody = {
     email: string;
@@ -90,7 +90,7 @@ const sync = async (body: TracksArgs): Promise<null> => {
     return null;
 };
 
-const beetsImport = async (args: ImportArgs): Promise<string> => {
+const beetsImport = async (args: ImportArgs): Promise<Import> => {
     const { query } = args;
 
     const res = await pymixApiClient().import({
@@ -101,7 +101,11 @@ const beetsImport = async (args: ImportArgs): Promise<string> => {
         throw new Error('Failed to sync');
     }
 
-    return res.body.data.job_id;
+    return {
+        jobId: res.body.data.job_id,
+        maxLibrarySizeExceeded: res.body.data.max_library_size_exceeded,
+        success: res.body.data.success,
+    };
 };
 
 const beetsImportProgress = async (args: ImportProgressArgs): Promise<BeetImportProgress> => {
@@ -130,13 +134,17 @@ const validateToken = async (token: string): Promise<boolean> => {
     return res.body.data.is_valid_token;
 };
 
-const rbImport = async (): Promise<string> => {
+const rbImport = async (): Promise<Import> => {
     const res = await pymixApiClient().rbImport({});
     if (res.status !== 200) {
         throw new Error('Failed to sync');
     }
 
-    return res.body.data.job_id;
+    return {
+        jobId: res.body.data.job_id,
+        maxLibrarySizeExceeded: res.body.data.max_library_size_exceeded,
+        success: res.body.data.success,
+    };
 };
 
 const librarySize = async (): Promise<number> => {

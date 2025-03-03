@@ -18,8 +18,6 @@ import {
 import { Dropzone } from '@mantine/dropzone';
 import { useCurrentServer } from '/@/renderer/store';
 import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
-import JSZip from 'jszip';
-import { Link } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import RBBackup from '../../../../../assets/RB-backup.png';
 import { fbController } from '../../../api/filebrowser/filebrowser-controller';
@@ -83,20 +81,27 @@ const processImport = async (
     ) => void,
 ) => {
     let jobId = '';
+    let importResult;
     try {
         if (isRBImport) {
-            jobId = await pymixController.rbImport();
+            importResult = await pymixController.rbImport();
         } else if (isSeratoImport) {
             await pymixController.seratoImport();
         } else {
-            jobId = await pymixController.beetsImport({ query: { public: isPublic } });
+            importResult = await pymixController.beetsImport({ query: { public: isPublic } });
         }
     } catch (error) {
         console.error('Error during import:', error);
     }
 
+    if (importResult?.maxLibrarySizeExceeded) {
+        return 'librarySizeExceeded';
+    }
+
+    jobId = importResult?.jobId || '';
+
     if (!jobId) {
-        return;
+        return 'noJobId';
     }
 
     let percentageComplete = 0;
@@ -141,6 +146,7 @@ const processImport = async (
     processedFiles.forEach(({ id }) => {
         updateUploadStatus(id, outcome, 100, 100);
     });
+    return 'success';
 };
 
 export const UploadContent = () => {
@@ -159,7 +165,6 @@ export const UploadContent = () => {
     const [fbHasUnprocessedFiles, setFbHasUnprocessedFiles] = useState(false);
     const [importType, setImportType] = useState<string>('rekordbox');
     const [isLimitExceededModalOpen, setIsLimitExceededModalOpen] = useState(false);
-    const [isChecking, setIsChecking] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -193,34 +198,7 @@ export const UploadContent = () => {
     }
 
     const handleDrop = async (acceptedFiles: File[]) => {
-        setIsChecking(true);
-        const currentSize = await pymixController.librarySize();
-        let totalSize = currentSize;
-        for (const file of acceptedFiles) {
-            if (file.type === 'application/zip') {
-                const zip = new JSZip();
-                const content = await zip.loadAsync(file);
-                const totalUncompressedSize = await Promise.all(
-                    Object.values(content.files).map(async (file) => {
-                        const data = await file.async('uint8array');
-                        return data.length;
-                    }),
-                ).then((sizes) => sizes.reduce((acc, size) => acc + size, 0));
-                totalSize += totalUncompressedSize;
-            } else {
-                totalSize += file.size;
-            }
-        }
-        // Check if total size exceeds 2.5 GB
-        const maxSize = 2.5 * 1024 * 1024 * 1024;
-        if (totalSize > maxSize && server.username !== 'laker93') {
-            setIsLimitExceededModalOpen(true);
-            setIsChecking(false);
-            return;
-        }
-
         setFiles([...files, ...acceptedFiles]);
-        setIsChecking(false);
     };
 
     const updateUploadStatus = (
@@ -286,7 +264,10 @@ export const UploadContent = () => {
             setIsUploading(false);
             setIsProcessing(true);
             console.log('upload history', uploadHistory);
-            await processImport(false, isRBImport, false, updateUploadStatus);
+            const result = await processImport(false, isRBImport, false, updateUploadStatus);
+            if (result === 'librarySizeExceeded') {
+                setIsLimitExceededModalOpen(true);
+            }
             setIsProcessing(false);
         } catch (error) {
             setIsUploading(false);
@@ -327,11 +308,9 @@ export const UploadContent = () => {
         await processImport(false, isRBImport, false, updateUploadStatus);
     };
 
-    const isLoading = isChecking || isUploading || isProcessing;
+    const isLoading = isUploading || isProcessing;
     let isLoadingText = '';
-    if (isChecking) {
-        isLoadingText = 'Running checks on your files to be uploaded...';
-    } else if (isUploading) {
+    if (isUploading) {
         isLoadingText = 'Uploading files...';
     } else if (isProcessing) {
         isLoadingText = 'Processing files...';
@@ -638,9 +617,15 @@ export const UploadContent = () => {
                 onClose={() => setIsLimitExceededModalOpen(false)}
             >
                 <Text>
-                    You have exceeded the limits for user upload. Please get in touch. See the{' '}
-                    <Link to="/about">about</Link> page for details on how to join the Discord
-                    server.
+                    You have exceeded the maximum library size. To apply for more storage, post a
+                    message in the discord here:{' '}
+                    <a
+                        href="https://discord.gg/mqrRbex3hs"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                    >
+                        https://discord.gg/mqrRbex3hs
+                    </a>
                 </Text>
             </Modal>
         </Box>
