@@ -1,5 +1,10 @@
 import { pymixApiClient } from '/@/renderer/api/pymix/pymix-api';
-import { BeetImportProgress, SyncPlaylistArgs, SyncPlaylistResponse, Import } from '/@/renderer/api/types';
+import {
+    BeetImportProgress,
+    SyncPlaylistArgs,
+    SyncPlaylistResponse,
+    Import,
+} from '/@/renderer/api/types';
 
 type CreateBody = {
     email: string;
@@ -28,6 +33,11 @@ type TracksArgs = Track[];
 
 type ImportArgs = { query: { public: boolean } };
 type ImportProgressArgs = { query: { jobId: string; public: boolean } };
+type MatchTrack = {
+    artist: string;
+    matched: boolean;
+    title: string;
+};
 
 const create = async (body: CreateArgs): Promise<null> => {
     const res = await pymixApiClient().create({
@@ -142,30 +152,6 @@ const beetsImportProgress = async (args: ImportProgressArgs): Promise<BeetImport
     };
 };
 
-let matchTracksInvocationCount = 0;
-
-const matchTracks = async (): Promise<{ matchedTracks: string[]; missingTracks: string[] }> => {
-    matchTracksInvocationCount += 1;
-
-    if (matchTracksInvocationCount === 1) {
-        return {
-            matchedTracks: ['Open World - dj lostboi', 'Arrival - Torus', 'Post Kyiv - D.Dan'],
-            missingTracks: ['THE KID - DJ El Sobrino'],
-        };
-    }
-
-    return {
-        matchedTracks: [
-            'Open World - dj lostboi',
-            'Arrival - Torus',
-            'Post Kyiv - D.Dan',
-            'THE KID - DJ El Sobrino',
-            'Mutual Slump - DJ Shadow',
-        ],
-        missingTracks: [],
-    };
-};
-
 const validateToken = async (token: string): Promise<boolean> => {
     const res = await pymixApiClient().validateToken({ query: { token } });
     if (res.status !== 200) {
@@ -229,6 +215,18 @@ const deleteDuplicates = async (): Promise<Array<string>> => {
     }
 
     return res.body.data.duplicates_removed;
+};
+
+const matchTracks = async (body: TracksArgs): Promise<MatchTrack[]> => {
+    const res = await pymixApiClient().matchTracks({
+        body: { tracks: body },
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to match tracks');
+    }
+
+    return res.body.data.tracks;
 };
 
 export const pymixController = {

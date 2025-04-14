@@ -64,6 +64,15 @@ export const contract = c.router({
             500: resultWithHeaders(pymixType._response.error),
         },
     },
+    matchTracks: {
+        body: pymixType._parameters.matchTracks,
+        method: 'POST',
+        path: 'sync/match_tracks',
+        responses: {
+            200: resultWithHeaders(pymixType._response.matchTracks),
+            500: resultWithHeaders(pymixType._response.error),
+        },
+    },
     rbDownload: {
         body: pymixType._parameters.exportJob,
         method: 'POST',

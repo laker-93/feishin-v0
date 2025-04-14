@@ -39,11 +39,16 @@ export const PlaylistBuilderContent = () => {
     };
 
     const handleSubmit = async () => {
-        const tracks = trackList.map((track) => `${track.artist} - ${track.title}`);
         try {
-            const response = await pymixController.matchTracks({ tracks });
-            setMatchedTracks(response.matchedTracks);
-            setMissingTracks(response.missingTracks);
+            const response = await pymixController.matchTracks(trackList);
+            const matched = response
+                .filter((track) => track.matched)
+                .map((track) => `${track.artist} - ${track.title}`);
+            const missing = response
+                .filter((track) => !track.matched)
+                .map((track) => `${track.artist} - ${track.title}`);
+            setMatchedTracks(matched);
+            setMissingTracks(missing);
         } catch (error) {
             toast.error({ message: 'Failed to match tracks' });
             console.error('Error matching tracks:', error);
@@ -100,7 +105,7 @@ export const PlaylistBuilderContent = () => {
             const calculateTrackIds = async () => {
                 const trackIds = [];
                 for (const track of matchedTracks) {
-                    const [title, artist] = track.split(' - ');
+                    const [artist, title] = track.split(' - ');
                     const songList = await NavidromeController.getSongList({
                         apiClientProps: { server },
                         query: {

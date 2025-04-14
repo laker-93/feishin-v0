@@ -11,6 +11,17 @@ const syncPlaylists = z.object({
     success: z.boolean(),
     zipPath: z.string(),
 });
+const matchTracks = z.object({
+    reason: z.string(),
+    success: z.boolean(),
+    tracks: z.array(
+        z.object({
+            artist: z.string(),
+            matched: z.boolean(),
+            title: z.string(),
+        }),
+    ),
+});
 const isValidToken = z.object({
     is_valid_token: z.boolean(),
     reason: z.string(),
@@ -100,6 +111,10 @@ const importParameters = z.object({
     public: z.boolean(),
 });
 
+const matchTracksParameters = z.object({
+    tracks: z.array(track),
+});
+
 const rbImportParameters = z.object({
     username: z.string(),
 });
@@ -126,6 +141,7 @@ export const pymixType = {
         importProgress: importProgressParameters,
         isValidToken: isValidTokenParameters,
         login: loginParameters,
+        matchTracks: matchTracksParameters,
         rbImport: rbImportParameters,
         sync: syncParameters,
         syncPlaylists: syncPlaylistsParameters,
@@ -140,6 +156,7 @@ export const pymixType = {
         isValidToken,
         librarySize,
         login,
+        matchTracks,
         rbImport,
         seratoImport,
         sync,
