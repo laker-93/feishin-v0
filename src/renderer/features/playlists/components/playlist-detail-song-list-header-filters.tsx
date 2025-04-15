@@ -14,6 +14,7 @@ import {
     RiEditFill,
     RiDeleteBinFill,
     RiRefreshLine,
+    RiDownloadFill,
 } from 'react-icons/ri';
 import { api } from '/@/renderer/api';
 import { queryKeys } from '/@/renderer/api/query-keys';
@@ -54,6 +55,10 @@ import { useDeletePlaylist } from '/@/renderer/features/playlists/mutations/dele
 import { AppRoute } from '/@/renderer/router/routes';
 import { OrderToggleButton } from '/@/renderer/features/shared';
 import i18n from '/@/i18n/i18n';
+import { useSyncPlaylists } from '/@/renderer/features/playlists/mutations/sync-playlist-mutation';
+import { fbController } from '/@/renderer/api/filebrowser/filebrowser-controller';
+
+const urlConfig = JSON.parse(process.env.URL_CONFIG);
 
 const FILTERS = {
     jellyfin: [
@@ -469,6 +474,48 @@ export const PlaylistDetailSongListHeaderFilters = ({
         });
     };
 
+    const syncPlaylistsMutation = useSyncPlaylists({});
+    const handleDownloadPlaylist = useCallback(() => {
+        if (!detailQuery.data) return;
+
+        const downloadFile = async (fileName: string) => {
+            const fbUrl = urlConfig.url.filebrowser;
+            try {
+                const response = await fbController.download(fbUrl, server!.fbToken!, {
+                    query: { filename: fileName },
+                    responseType: 'blob',
+                });
+                const blob = new Blob([response.data]);
+                const url = window.URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                toast.error({ message: `Download failed: ${error.message}` });
+            }
+        };
+        syncPlaylistsMutation?.mutate(
+            { query: { ids: [detailQuery.data.id] } },
+            {
+                onError: (err) => {
+                    toast.error({
+                        message: err.message,
+                        title: t('error.genericError', { postProcess: 'sentenceCase' }),
+                    });
+                },
+                onSuccess: () => {
+                    downloadFile('music.zip');
+                },
+            },
+        );
+    }, [syncPlaylistsMutation, detailQuery.data, server, t]);
+
     return (
         <Flex justify="space-between">
             <Group
@@ -557,6 +604,12 @@ export const PlaylistDetailSongListHeaderFilters = ({
                             onClick={openDeletePlaylistModal}
                         >
                             {t('action.deletePlaylist', { postProcess: 'sentenceCase' })}
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                            icon={<RiDownloadFill />}
+                            onClick={handleDownloadPlaylist}
+                        >
+                            {t('action.downloadPlaylist', { postProcess: 'sentenceCase' })}
                         </DropdownMenu.Item>
                         <DropdownMenu.Divider />
                         <DropdownMenu.Item

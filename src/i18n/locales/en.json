@@ -7,6 +7,8 @@
         "deletePlaylist": "delete $t(entity.playlist_one)",
         "deleteSong": "delete song from library",
         "deselectAll": "deselect all",
+        "downloadPlaylists": "download playlists",
+        "downloadPlaylist": "download playlist",
         "editPlaylist": "edit $t(entity.playlist_one)",
         "goToPage": "go to page",
         "moveToNext": "move to next",
@@ -154,6 +156,7 @@
         "track_one": "track",
         "track_other": "tracks",
         "mixes": "mixes",
+        "playlistBuilder": "playlist builder",
         "song_one": "song",
         "song_other": "songs",
         "trackWithCount_one": "{{count}} track",
@@ -369,6 +372,7 @@
             "deletePlaylist": "$t(action.deletePlaylist)",
             "deleteSong": "$t(action.deleteSong)",
             "deselectAll": "$t(action.deselectAll)",
+            "downloadPlaylists": "$t(action.downloadPlaylists)",
             "download": "download",
             "moveToNext": "$t(action.moveToNext)",
             "moveToBottom": "$t(action.moveToBottom)",
@@ -468,7 +472,8 @@
             "shared": "shared $t(entity.playlist_other)",
             "tracks": "$t(entity.track_other)",
             "upload": "$t(entity.upload)",
-            "mixes": "$t(entity.mixes)"
+            "mixes": "$t(entity.mixes)",
+            "playlistBuilder": "$t(entity.playlistBuilder)"
         },
         "trackList": {
             "artistTracks": "tracks by {{artist}}",
@@ -477,6 +482,9 @@
         },
         "mixes": {
             "title": "$t(entity.mixes)"
+        },
+        "playlistBuilder": {
+            "title": "$t(entity.playlistBuilder)"
         },
         "upload": {
             "title": "$t(entity.upload)"
@@ -690,6 +698,7 @@
         "savePlayQueue_description": "save the play queue when the application is closed and restore it when the application is opened",
         "scrobble": "scrobble",
         "scrobble_description": "scrobble plays to your media server",
+        "setWatchDirectory": "set the watch directory",
         "showSkipButton": "show skip buttons",
         "showSkipButton_description": "show or hide the skip buttons on the player bar",
         "showSkipButtons": "show skip buttons",
@@ -737,6 +746,8 @@
         "volumeWheelStep_description": "the amount of volume to change when scrolling the mouse wheel on the volume slider",
         "volumeWidth": "volume slider width",
         "volumeWidth_description": "the width of the volume slider",
+        "watchDirectory": "watch directory",
+        "watchDirectory_description": "any audio files in the watch directory will be automatically uploaded",
         "webAudio": "use web audio",
         "webAudio_description": "use web audio. this enables advanced features like replaygain. disable if you experience otherwise",
         "windowBarStyle": "window bar style",

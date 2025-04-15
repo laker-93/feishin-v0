@@ -893,6 +893,14 @@ export type DeletePlaylistArgs = {
     serverId?: string;
 } & BaseEndpointArgs;
 
+export type SyncPlaylistResponse = null | undefined;
+
+export type SyncPlaylistQuery = { ids: string[] };
+
+export type SyncPlaylistArgs = {
+    query: SyncPlaylistQuery;
+};
+
 // Playlist List
 export type PlaylistListResponse = BasePaginatedResponse<Playlist[]> | null | undefined;
 

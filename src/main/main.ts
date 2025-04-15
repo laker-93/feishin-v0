@@ -28,13 +28,13 @@ import {
     net,
     Rectangle,
     screen,
+    dialog,
 } from 'electron';
 import electronLocalShortcut from 'electron-localshortcut';
 import log from 'electron-log/main';
 import { autoUpdater } from 'electron-updater';
 import fs from 'fs-extra';
 import musicMetadata from 'music-metadata';
-import * as tus from 'tus-js-client';
 import unzipper from 'unzipper';
 import { disableMediaKeys, enableMediaKeys } from './features/core/player/media-keys';
 import { store } from './features/core/settings/index';
@@ -52,12 +52,29 @@ import './features';
 import type { TitleTheme } from '/@/renderer/types';
 import prodConfig from '../../prod-config.json';
 import devConfig from '../../url-config.json';
+import { extractPlaylists, ParsedTrack } from '/@/main/rekordbox-xml';
+import { extractTrackName } from '/@/main/extract-track-name';
+import { UploadTrack } from '/@/main/rekordbox-xml-types';
 // eslint-disable-next-line import/order
 const fsp = require('fs').promises;
 
 declare module 'node-mpv';
 
 const urlConfig = process.env.NODE_ENV === 'production' ? prodConfig : devConfig;
+let authToken: string | null = null;
+// Shared queues for successfully handled files and failed uploads
+
+// Load CA certificates
+// remove for dev
+// workaround for UNABLE_TO_VERIFY_LEAF_SIGNATURE
+// const caCertificates = fs.readFileSync('/Users/lukepurnell/workspace/traefik/certs/local-cert.pem');
+// process.env.NODE_EXTRA_CA_CERTS = '/Users/lukepurnell/workspace/traefik/certs/local-cert.pem';
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+    // ca: caCertificates,
+});
+
+let watchDirectoryPath: string | null = null;
 
 export default class AppUpdater {
     constructor() {
@@ -720,9 +737,8 @@ async function downloadFile(token: string, fileName: string) {
                 'X-Auth': `${token}`,
             },
             // todo remove this in prod. This is only needed for dev testing
-            httpsAgent: new https.Agent({
-                rejectUnauthorized: false,
-            }),
+            // workaround UNABLE_TO_VERIFY_LEAF_SIGNATURE for dev
+            httpsAgent,
 
             responseType: 'stream',
         });
@@ -828,9 +844,7 @@ ipcMain.handle(
             },
             {
                 // todo remove this in prod. This is only needed for dev testing
-                httpsAgent: new https.Agent({
-                    rejectUnauthorized: false,
-                }),
+                httpsAgent,
                 params: {
                     username,
                 },
@@ -849,55 +863,102 @@ ipcMain.handle(
     },
 );
 
-ipcMain.handle('upload-files', async (event, files: string[], token: string) => {
-    console.log('uploading files:', files);
-    for (const file of files) {
-        console.log('uploading file:', file);
-        // const baseUrl = 'https://browser.sub-box.net/browser'
-        const baseUrl = urlConfig.url.filebrowser;
-        const resourcePath = `${baseUrl}/api/tus/uploads/${file}?override=true`;
+ipcMain.handle(
+    'upload-from-xml',
+    async (event, xml: string, token: string, username: string): Promise<UploadTrack[]> => {
+        const tracks = extractPlaylists(xml).tracks;
+        console.log('tracks', tracks);
+        const trackKeyToTrack: Record<string, ParsedTrack> = {};
+        const clientTracks = [];
+        for (const track of tracks) {
+            if (track.name === null) {
+                throw new Error(`Track name is null for track: ${JSON.stringify(track)}`);
+            }
+            if (track.artist === null) {
+                throw new Error(`Track artist is null for track: ${JSON.stringify(track)}`);
+            }
+            const cleanName = extractTrackName(track.name, track.artist, track.album ?? undefined);
+            track.cleanName = cleanName;
+            const key = `${track.artist} - ${track.cleanName}`;
+            trackKeyToTrack[key] = track;
+            clientTracks.push({
+                album: track.album,
+                artist: track.artist,
+                fileExtension: track.fileExtension,
+                title: track.cleanName,
+            });
+        }
 
-        const resp = await axios.post(resourcePath, {
+        const fileName = path.basename(xml);
+        const baseUrl = urlConfig.url.filebrowser;
+        const resourcePath = `${baseUrl}/api/resources/uploads/${fileName}?override=true`;
+        const fileContents = fs.readFileSync(xml);
+        const resp = await axios.post(resourcePath, fileContents, {
             headers: {
+                'Content-Type': 'application/xml',
                 'X-Auth': `${token}`,
             },
+            // todo remove this in prod. This is only needed for dev testing
+            httpsAgent,
         });
 
-        if (resp.status !== 201) {
-            throw new Error(`Failed to create an upload: ${resp.status} ${resp.statusText}`);
+        if (resp.status !== 200) {
+            throw new Error(`Failed to upload xml: ${resp.status} ${resp.statusText}`);
         }
-        const fileBuffer = await fsp.readFile(file);
-        await new Promise((resolve, reject) => {
-            const uploader = new tus.Upload(fileBuffer, {
-                chunkSize: 10485760,
 
-                // endpoint: resourcePath,
+        const pymixUrl = urlConfig.url.pymix;
+        const response = await axios.post(
+            `${pymixUrl}/sync/match_tracks`,
+            {
+                tracks: clientTracks,
+            },
+            {
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
+                params: {
+                    username,
+                },
+            },
+        );
+        console.log('match tracks', response.data.tracks);
+        const missingTracks = [];
+        for (const track of response.data.tracks) {
+            if (track.matched === false) {
+                missingTracks.push(track);
+            }
+        }
+
+        const uploadedTracks = [];
+        for (const missingTrack of missingTracks) {
+            const trackName = `${missingTrack.artist} - ${missingTrack.title}`;
+            const track = trackKeyToTrack[trackName];
+            // const baseUrl = 'https://browser.sub-box.net/browser'
+            const baseUrl = urlConfig.url.filebrowser;
+            const resourcePath = `${baseUrl}/api/resources/uploads/${track.artist}/${track.album}/${track.cleanName}${track.fileExtension}?override=true`;
+
+            const fileContents = fs.readFileSync(track.location);
+            const resp = await axios.post(resourcePath, fileContents, {
                 headers: {
+                    'Content-Type': 'audio/mpeg', // ADJUST THIS PER FILETYPE (img, pdf, etc)
                     'X-Auth': `${token}`,
                 },
-                // uploadSize: fileSize,
-                onError: (error) => {
-                    console.error('Error while uploading file:', error);
-                    reject(error);
-                },
-
-                onProgress: (bytesUploaded, bytesTotal) => {
-                    const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
-                    console.log(
-                        `Uploaded ${bytesUploaded} of ${bytesTotal} bytes (${percentage}%)`,
-                    );
-                },
-                onSuccess: () => {
-                    console.log('File uploaded successfully.');
-                    resolve(uploader.url);
-                },
-                uploadUrl: resourcePath,
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
             });
-            uploader.start();
-        });
-    }
-    return null;
-});
+
+            if (resp.status !== 200) {
+                throw new Error(`Failed to create an upload: ${resp.status} ${resp.statusText}`);
+            } else {
+                uploadedTracks.push({
+                    artist: track.artist,
+                    title: track.cleanName,
+                });
+            }
+        }
+        console.log('uploaded tracks', uploadedTracks);
+        return uploadedTracks;
+    },
+);
 
 ipcMain.handle('download-rb-xml', async (event, fbToken: string) => {
     downloadFile(fbToken, 'subbox_rb_export.xml');
@@ -908,4 +969,104 @@ ipcMain.handle('download-serato-crates', async (event, fbToken: string) => {
     downloadFile(fbToken, 'SubCrates.zip');
     // todo extract to user's Music directory
     return null;
+});
+
+// Function to handle the added or changed file
+async function handleFileChange(filePath: string): Promise<{ reason?: string; success: boolean }> {
+    console.log(`Handling file change: ${filePath}`);
+    try {
+        const relativePath = path.relative(watchDirectoryPath!, filePath);
+        const fileContents = fs.readFileSync(filePath);
+        const baseUrl = urlConfig.url.filebrowser;
+        // todo set name of upload path to path of file without the watchdir root
+        const resourcePath = `${baseUrl}/api/resources/watch/${relativePath}?override=true`;
+        const resp = await axios.post(resourcePath, fileContents, {
+            headers: {
+                'Content-Type': 'audio/mpeg', // Adjust this per file type (img, pdf, etc)
+                'X-Auth': `${authToken}`,
+            },
+            httpsAgent,
+        });
+        if (resp.status !== 200) {
+            const reason = `Failed to create an upload: ${resp.status} ${resp.statusText}`;
+            console.error(reason);
+            return { reason, success: false };
+        }
+        console.log(`File ${filePath} uploaded successfully.`);
+
+        // Remove the file from the user's file system
+        try {
+            fs.unlinkSync(filePath); // Synchronously remove the file
+            console.log(`File ${filePath} removed from the file system.`);
+        } catch (unlinkError) {
+            console.error(`Failed to remove file ${filePath}:`, unlinkError);
+        }
+        return { success: true };
+    } catch (error) {
+        const reason = `Error handling file ${filePath}: ${error}`;
+        console.error(reason);
+        return { reason, success: false };
+    }
+}
+
+// Function to watch the directory for changes
+function watchDirectory(directoryPath: string) {
+    const fileQueue: string[] = []; // Queue to store file paths
+    let isProcessing = false; // Flag to track if processing is ongoing
+
+    // Function to process files from the queue
+    const processQueue = async () => {
+        if (isProcessing) return; // Skip if already processing
+
+        isProcessing = true; // Set the flag to indicate processing has started
+
+        while (fileQueue.length > 0) {
+            const filePath = fileQueue.shift(); // Get the next file from the queue
+            if (filePath) {
+                try {
+                    await handleFileChange(filePath); // Process the file
+                } catch (error) {
+                    console.error(`Error processing file ${filePath}:`, error);
+                }
+            }
+        }
+
+        isProcessing = false; // Reset the flag after processing
+    };
+
+    // Watch the directory for changes
+    fs.watch(directoryPath, { recursive: true }, (eventType, filename) => {
+        if (filename && authToken && eventType === 'rename') {
+            const filePath = path.join(directoryPath, filename);
+            if (fs.existsSync(filePath)) {
+                // Add the file to the queue
+                fileQueue.push(filePath);
+                console.log(`File added to queue: ${filePath}`);
+                processQueue(); // Start processing the queue
+            }
+        }
+    });
+}
+
+ipcMain.handle('select-watch-directory', async () => {
+    console.log('select watch dir');
+    const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+        console.log('result', result);
+        return null;
+    }
+    const directoryPath = result.filePaths[0];
+    watchDirectoryPath = directoryPath;
+    watchDirectory(directoryPath); // Start watching the selected directory
+    console.log('call start process poll');
+    return directoryPath;
+});
+
+ipcMain.handle('set-value', (event, key: string, value: string) => {
+    if (key === 'authToken') {
+        authToken = value;
+        console.log('Auth token set');
+    }
 });

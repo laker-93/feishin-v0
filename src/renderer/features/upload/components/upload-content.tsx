@@ -18,10 +18,12 @@ import {
 import { Dropzone } from '@mantine/dropzone';
 import { useCurrentServer } from '/@/renderer/store';
 import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
+import isElectron from 'is-electron';
 import { v4 as uuidv4 } from 'uuid';
 import RBBackup from '../../../../../assets/RB-backup.png';
 import { fbController } from '../../../api/filebrowser/filebrowser-controller';
 
+const userFS = isElectron() ? window.electron.userFs : null;
 const urlConfig = JSON.parse(process.env.URL_CONFIG);
 
 type UploadHistoryEntry = {
@@ -50,9 +52,6 @@ const upload = async (
         processProgress: number,
     ) => void,
 ) => {
-    console.log('public?', isPublic);
-    console.log('files', filePaths);
-
     // Upload files
     for (const { id, file } of filePaths) {
         try {
@@ -224,6 +223,66 @@ export const UploadContent = () => {
         });
     };
 
+    const handleDesktopUpload = async () => {
+        console.log('desktop upload');
+        if (server.fbToken === undefined) {
+            throw new Error('FB Server is not authenticated');
+        }
+        // Check that files only contains one file and that it is an XML file
+        let fromXml = false;
+        if (files.length === 1 && files[0].name.endsWith('.xml')) {
+            fromXml = true;
+        }
+
+        const currentTime = new Date().toISOString();
+
+        try {
+            setIsUploading(true);
+            if (userFS && fromXml) {
+                await userFS.uploadFromXml(files[0].path, server.fbToken, server.username);
+            } else {
+                const newUploadHistory = files.map((file) => ({
+                    createdTime: currentTime,
+                    fileName: file.name,
+                    id: uuidv4(),
+                    processProgress: 0,
+                    status: 'Pending',
+                    updatedTime: currentTime,
+                    uploadProgress: 0,
+                }));
+                setUploadHistory([...uploadHistory, ...newUploadHistory]);
+                await upload(
+                    newUploadHistory.map(({ id, fileName }) => ({
+                        file: files.find((f) => f.name === fileName)!,
+                        id,
+                    })),
+                    isRBImport,
+                    server.fbToken,
+                    updateUploadStatus,
+                );
+            }
+
+            setIsUploading(false);
+            setIsProcessing(true);
+            const result = await processImport(
+                false,
+                isRBImport || fromXml,
+                false,
+                updateUploadStatus,
+            );
+            if (result === 'librarySizeExceeded') {
+                setIsLimitExceededModalOpen(true);
+            }
+            setIsProcessing(false);
+        } catch (error) {
+            setIsUploading(false);
+            setIsProcessing(false);
+            console.error('Error uploading files:', error);
+        }
+        setFiles([]); // Clear the files after upload
+        setSelectedDropZoneFiles(new Set()); // Clear selected files after upload
+    };
+
     const handleUpload = async () => {
         if (server.fbToken === undefined) {
             throw new Error('FB Server is not authenticated');
@@ -263,7 +322,6 @@ export const UploadContent = () => {
             );
             setIsUploading(false);
             setIsProcessing(true);
-            console.log('upload history', uploadHistory);
             const result = await processImport(false, isRBImport, false, updateUploadStatus);
             if (result === 'librarySizeExceeded') {
                 setIsLimitExceededModalOpen(true);
@@ -397,7 +455,11 @@ export const UploadContent = () => {
                             mt="md"
                             position="center"
                         >
-                            <Button onClick={handleUpload}>Upload</Button>
+                            {isElectron() ? (
+                                <Button onClick={handleDesktopUpload}>Upload</Button>
+                            ) : (
+                                <Button onClick={handleUpload}>Upload</Button>
+                            )}
                         </Group>
                     </Box>
                 )}

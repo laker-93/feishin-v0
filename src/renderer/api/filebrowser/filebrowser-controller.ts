@@ -1,13 +1,17 @@
 import { Readable } from 'stream';
 import * as tus from 'tus-js-client';
 import { fbApiClient } from './filebrowser-api';
+import { FBResponseType } from '/@/renderer/api/filebrowser/filebrowser-types';
 
 const urlConfig = JSON.parse(process.env.URL_CONFIG);
 
 type DownloadQuery = {
     filename: string;
 };
-type DownloadArgs = { query: DownloadQuery };
+type DownloadArgs = {
+    query: DownloadQuery;
+    responseType: FBResponseType;
+};
 
 type UploadQuery = {
     filename: string;
@@ -47,11 +51,11 @@ const download = async (
     token: string,
     args: DownloadArgs,
 ): Promise<DownloadResponse> => {
-    const { query } = args;
+    const { query, responseType } = args;
 
     const cleanServerUrl = url.replace(/\/$/, '');
     const res = await fbApiClient({
-        responseType: 'stream',
+        responseType,
         token,
         url: cleanServerUrl,
     }).download({

@@ -30,3 +30,5 @@ export const fbType = {
         upload,
     },
 };
+
+export type FBResponseType = 'arraybuffer' | 'document' | 'json' | 'text' | 'stream' | 'blob';

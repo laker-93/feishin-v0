@@ -1,5 +1,10 @@
 import { pymixApiClient } from '/@/renderer/api/pymix/pymix-api';
-import { BeetImportProgress, Import } from '/@/renderer/api/types';
+import {
+    BeetImportProgress,
+    SyncPlaylistArgs,
+    SyncPlaylistResponse,
+    Import,
+} from '/@/renderer/api/types';
 
 type CreateBody = {
     email: string;
@@ -28,6 +33,11 @@ type TracksArgs = Track[];
 
 type ImportArgs = { query: { public: boolean } };
 type ImportProgressArgs = { query: { jobId: string; public: boolean } };
+type MatchTrack = {
+    artist: string;
+    matched: boolean;
+    title: string;
+};
 
 const create = async (body: CreateArgs): Promise<null> => {
     const res = await pymixApiClient().create({
@@ -41,6 +51,22 @@ const create = async (body: CreateArgs): Promise<null> => {
 
     if (res.status !== 200) {
         throw new Error('Failed to create account');
+    }
+
+    return null;
+};
+
+const syncPlaylists = async (body: SyncPlaylistArgs): Promise<SyncPlaylistResponse> => {
+    const { query } = body;
+
+    const res = await pymixApiClient().syncPlaylists({
+        body: {
+            ids: query.ids,
+        },
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to delete playlist');
     }
 
     return null;
@@ -191,6 +217,18 @@ const deleteDuplicates = async (): Promise<Array<string>> => {
     return res.body.data.duplicates_removed;
 };
 
+const matchTracks = async (body: TracksArgs): Promise<MatchTrack[]> => {
+    const res = await pymixApiClient().matchTracks({
+        body: { tracks: body },
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to match tracks');
+    }
+
+    return res.body.data.tracks;
+};
+
 export const pymixController = {
     beetsImport,
     beetsImportProgress,
@@ -198,10 +236,12 @@ export const pymixController = {
     deleteDuplicates,
     librarySize,
     login,
+    matchTracks,
     rbDownload,
     rbImport,
     seratoDownload,
     seratoImport,
     sync,
+    syncPlaylists,
     validateToken,
 };

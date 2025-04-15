@@ -15,6 +15,8 @@ import { pymixController } from '/@/renderer/api/pymix/pymix-controller';
 const urlConfig = JSON.parse(process.env.URL_CONFIG);
 const localSettings = isElectron() ? window.electron.localSettings : null;
 
+const userFS = isElectron() ? window.electron.userFs : null;
+
 interface CreateAccountFormProps {
     onCancel: () => void;
 }
@@ -118,8 +120,9 @@ export const CreateAccountForm = ({ onCancel }: CreateAccountFormProps) => {
                     toast.error({
                         message: t('error.authenticationFailed', { postProcess: 'sentenceCase' }),
                     });
+                } else if (userFS) {
+                    await userFS.setValue('authToken', fbToken);
                 }
-                console.log(`fbData: ${fbToken}`);
 
                 const data = await authFunction(
                     url,

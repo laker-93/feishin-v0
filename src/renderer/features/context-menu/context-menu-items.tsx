@@ -12,6 +12,7 @@ export const QUEUE_CONTEXT_MENU_ITEMS: SetContextMenuItems = [
     { children: true, disabled: false, id: 'setRating' },
     { disabled: false, divider: true, id: 'deselectAll' },
     { id: 'download' },
+    { divider: true, id: 'downloadPlaylists' },
     { divider: true, id: 'shareItem' },
     { divider: true, id: 'showDetails' },
 ];
@@ -28,6 +29,7 @@ export const SONG_CONTEXT_MENU_ITEMS: SetContextMenuItems = [
     { divider: true, id: 'removeFromFavorites' },
     { children: true, disabled: false, divider: true, id: 'setRating' },
     { id: 'download' },
+    { divider: true, id: 'downloadPlaylists' },
     { divider: true, id: 'shareItem' },
     { divider: true, id: 'showDetails' },
 ];
@@ -118,4 +120,5 @@ export const PLAYLIST_CONTEXT_MENU_ITEMS: SetContextMenuItems = [
     { divider: true, id: 'shareItem' },
     { id: 'deletePlaylist' },
     { divider: true, id: 'deleteSong' },
+    { divider: true, id: 'downloadPlaylists' },
 ];

@@ -1,3 +1,4 @@
+// import https from 'https';
 import { createContext, Fragment, ReactNode, useState, useMemo, useCallback } from 'react';
 import { RowNode } from '@ag-grid-community/core';
 import { Divider, Group, Portal, Stack } from '@mantine/core';
@@ -68,6 +69,10 @@ import { updateSong } from '/@/renderer/features/player/update-remote-song';
 import { controller } from '/@/renderer/api/controller';
 import { api } from '/@/renderer/api';
 import { setQueue, setQueueNext } from '/@/renderer/utils/set-transcoded-queue-data';
+import { useSyncPlaylists } from '/@/renderer/features/playlists/mutations/sync-playlist-mutation';
+import { fbController } from '/@/renderer/api/filebrowser/filebrowser-controller';
+
+const urlConfig = JSON.parse(process.env.URL_CONFIG);
 
 type ContextMenuContextProps = {
     closeContextMenu: () => void;
@@ -614,6 +619,78 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
 
     const updateRatingMutation = useSetRating({});
 
+    const syncPlaylistsMutation = useSyncPlaylists({});
+
+    const handleDownloadPlaylists = useCallback(() => {
+        const playlistIds = [];
+        for (const item of ctx.data) {
+            playlistIds.push(item.id);
+        }
+
+        const downloadFile = async (fileName: string) => {
+            const fbUrl = urlConfig.url.filebrowser;
+            try {
+                const response = await fbController.download(fbUrl, server!.fbToken!, {
+                    query: { filename: fileName },
+                    responseType: 'blob',
+                });
+                const blob = new Blob([response.data]); // Convert response to a blob
+                const url = window.URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                toast.error({ message: `Download failed: ${error.message}` });
+            }
+        };
+        syncPlaylistsMutation?.mutate(
+            { query: { ids: playlistIds } },
+            {
+                onError: (err) => {
+                    toast.error({
+                        message: err.message,
+                        title: t('error.genericError', { postProcess: 'sentenceCase' }),
+                    });
+                },
+                onSuccess: () => {
+                    ctx.tableApi?.refreshInfiniteCache();
+                    ctx.resetGridCache?.();
+                    downloadFile('music.zip');
+                },
+            },
+        );
+
+        closeAllModals();
+    }, [ctx, server, syncPlaylistsMutation, t]);
+
+    const openDownloadPlaylistModal = useCallback(() => {
+        openModal({
+            children: (
+                <ConfirmModal onConfirm={handleDownloadPlaylists}>
+                    <Stack>
+                        <Text>{t('common.areYouSure', { postProcess: 'sentenceCase' })}</Text>
+                        <ul>
+                            {ctx.data.map((item) => (
+                                <li key={item.id}>
+                                    <Group>
+                                        —<Text $secondary>{item.name}</Text>
+                                    </Group>
+                                </li>
+                            ))}
+                        </ul>
+                    </Stack>
+                </ConfirmModal>
+            ),
+            title: t('page.contextMenu.downloadPlaylists', { postProcess: 'titleCase' }),
+        });
+    }, [ctx.data, handleDownloadPlaylists, t]);
+
     const handleUpdateRating = useCallback(
         (rating: number) => {
             if (!ctx.dataNodes && !ctx.data) return;
@@ -831,6 +908,12 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
                 leftIcon: <RiDownload2Line size="1.1rem" />,
                 onClick: handleDownload,
             },
+            downloadPlaylists: {
+                id: 'downloadPlaylists',
+                label: t('page.contextMenu.downloadPlaylists', { postProcess: 'sentenceCase' }),
+                leftIcon: <RiDeleteBinFill size="1.1rem" />,
+                onClick: openDownloadPlaylistModal,
+            },
             moveToBottomOfQueue: {
                 id: 'moveToBottomOfQueue',
                 label: t('page.contextMenu.moveToBottom', { postProcess: 'sentenceCase' }),
@@ -986,6 +1069,7 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
         handleAddToFavorites,
         handleAddToPlaylist,
         openDeletePlaylistModal,
+        openDownloadPlaylistModal,
         handleDeselectAll,
         handleDeleteSong,
         ctx.data,

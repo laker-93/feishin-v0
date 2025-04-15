@@ -1,6 +1,6 @@
-import type { IpcRendererEvent } from 'electron';
+import { type IpcRendererEvent } from 'electron';
 import isElectron from 'is-electron';
-import { FileInput, NumberInput, Select, toast } from '/@/renderer/components';
+import { Button, FileInput, NumberInput, Select, toast } from '/@/renderer/components';
 import {
     SettingsSection,
     SettingOption,
@@ -17,6 +17,8 @@ import i18n, { languages } from '/@/i18n/i18n';
 
 const localSettings = isElectron() ? window.electron.localSettings : null;
 const ipc = isElectron() ? window.electron.ipc : null;
+
+const userFS = isElectron() ? window.electron.userFs : null;
 
 type Font = {
     label: string;
@@ -65,6 +67,7 @@ export const ApplicationSettings = () => {
     const fontSettings = useFontSettings();
     const { setSettings } = useSettingsStoreActions();
     const [localFonts, setLocalFonts] = useState<Font[]>([]);
+    const [watchDirectory, setWatchDirectory] = useState<string | null>(null);
 
     const fontList = useMemo(() => {
         if (fontSettings.custom) {
@@ -151,6 +154,13 @@ export const ApplicationSettings = () => {
                 language: e,
             },
         });
+    };
+
+    const handleWatchDirectoryChange = async () => {
+        const watchDir = await userFS?.setWatchDirectory();
+        if (watchDir) {
+            setWatchDirectory(watchDir); // Update the state with the selected directory
+        }
     };
 
     const options: SettingOption[] = [
@@ -287,6 +297,20 @@ export const ApplicationSettings = () => {
             title: t('setting.zoom', {
                 postProcess: 'sentenceCase',
             }),
+        },
+        {
+            control: (
+                <Button onClick={handleWatchDirectoryChange}>
+                    {watchDirectory ||
+                        t('setting.setWatchDirectory', { postProcess: 'sentenceCase' })}
+                </Button>
+            ),
+            description: t('setting.watchDirectory', {
+                context: 'description',
+                postProcess: 'sentenceCase',
+            }),
+            isHidden: !isElectron(),
+            title: t('setting.watchDirectory', { postProcess: 'sentenceCase' }),
         },
     ];
 

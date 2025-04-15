@@ -94,6 +94,7 @@ export const Sidebar = () => {
             Home: t('page.sidebar.home', { postProcess: 'titleCase' }),
             // Mixes: t('page.sidebar.mixes', { postProcess: 'titleCase' }),
             'Now Playing': t('page.sidebar.nowPlaying', { postProcess: 'titleCase' }),
+            PlaylistBuilder: t('page.sidebar.playlistBuilder', { postProcess: 'titleCase' }),
             Playlists: t('page.sidebar.playlists', { postProcess: 'titleCase' }),
             Search: t('page.sidebar.search', { postProcess: 'titleCase' }),
             Settings: t('page.sidebar.settings', { postProcess: 'titleCase' }),

@@ -3,7 +3,7 @@ import axios, { AxiosHeaders, Method, AxiosError, AxiosResponse, isAxiosError } 
 import omitBy from 'lodash/omitBy';
 import qs from 'qs';
 import { z } from 'zod';
-import { fbType } from './filebrowser-types';
+import { FBResponseType, fbType } from './filebrowser-types';
 import { useAuthStore } from '/@/renderer/store';
 
 const c = initContract();
@@ -102,7 +102,7 @@ const waitForResult = async (count = 0): Promise<void> => {
 };
 
 export const fbApiClient = (args: {
-    responseType?: 'arraybuffer' | 'document' | 'json' | 'text' | 'stream' | 'blob';
+    responseType?: FBResponseType;
     token?: string;
     url: string;
     useRaw?: boolean;
