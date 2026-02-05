@@ -13,6 +13,9 @@ const uploadFromXml = async (
 ): Promise<UploadTrack[]> => {
     return ipcRenderer.invoke('upload-from-xml', xml, fbToken, username);
 };
+const uploadFromSerato = async (fbToken: string, username: string): Promise<UploadTrack[]> => {
+    return ipcRenderer.invoke('upload-from-serato', fbToken, username);
+};
 
 const getAppPath = async () => {
     return ipcRenderer.invoke('get-app-path');
@@ -41,6 +44,7 @@ export const userFs = {
     setValue,
     setWatchDirectory,
     sync,
+    uploadFromSerato,
     uploadFromXml,
 };
 

@@ -32,7 +32,7 @@ export const DownloadContent = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [exportType, setExportType] = useState<string>('rekordbox');
 
-    if (!server || !userFS) {
+    if (!server) {
         return (
             <Box
                 m={2}
@@ -59,25 +59,23 @@ export const DownloadContent = () => {
 
     const handleExport = async () => {
         setIsSyncing(true);
-        const appPath = await userFS.getAppPath();
+        const appPath = userFS ? await userFS.getAppPath() : '';
         try {
             if (exportType === 'rekordbox') {
                 await pymixController.rbDownload({
                     body: { user_root: appPath },
                 });
-                if (server.fbToken === undefined) {
-                    throw new Error('FB Server is not authenticated');
+                if (userFS && server.fbToken) {
+                    await userFS.downloadRBXML(server.fbToken);
                 }
-                await userFS.downloadRBXML(server.fbToken);
                 setIsModalOpen(true);
             } else if (exportType === 'serato') {
                 await pymixController.seratoDownload({
                     body: { user_root: appPath },
                 });
-                if (server.fbToken === undefined) {
-                    throw new Error('FB Server is not authenticated');
+                if (userFS && server.fbToken) {
+                    await userFS.downloadSeratoCrates(server.fbToken);
                 }
-                await userFS.downloadSeratoCrates(server.fbToken);
                 setIsModalOpen(true);
             }
         } catch (error) {
@@ -95,27 +93,38 @@ export const DownloadContent = () => {
     };
 
     const handleSync = async () => {
-        setIsSyncing(true);
-        const appPath = await userFS.getAppPath();
-        const musicPath = `${appPath}/music`;
-        console.log('start syncing', musicPath);
-        return syncMusicDirectory(musicPath, server)
-            .then(() => {
-                setIsModalOpen(true);
-                return null;
-            })
-            .catch((error) => {
-                toast.error({
-                    message: (error as Error).message,
-                    title: t('error.syncError', {
-                        postProcess: 'sentenceCase',
-                    }),
-                });
-                console.error('Error syncing music directory:', error);
-            })
-            .finally(() => {
-                setIsSyncing(false);
+        if (!userFS) {
+            toast.error({
+                message: t('error.syncUnavailable', {
+                    postProcess: 'sentenceCase',
+                }),
+                title: t('error.syncError', {
+                    postProcess: 'sentenceCase',
+                }),
             });
+            return;
+        }
+
+        setIsSyncing(true);
+
+        try {
+            const appPath = await userFS.getAppPath();
+            const musicPath = `${appPath}/music`;
+            console.log('start syncing', musicPath);
+
+            await syncMusicDirectory(musicPath, server);
+            setIsModalOpen(true);
+        } catch (error) {
+            toast.error({
+                message: (error as Error).message,
+                title: t('error.syncError', {
+                    postProcess: 'sentenceCase',
+                }),
+            });
+            console.error('Error syncing music directory:', error);
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     const handleImageClick = (imageSrc: string) => {
@@ -141,8 +150,8 @@ export const DownloadContent = () => {
                 position="center"
             >
                 <Button
-                    color={isSyncing ? 'gray' : 'blue'}
-                    disabled={isSyncing}
+                    color={isSyncing || !userFS ? 'gray' : 'blue'}
+                    disabled={isSyncing || !userFS}
                     onClick={handleSync}
                 >
                     {isSyncing ? 'Downloading...' : 'Download'}

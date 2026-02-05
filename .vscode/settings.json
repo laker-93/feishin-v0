@@ -1,4 +1,7 @@
 {
+    "vim.handleKeys": {
+      "<C-p>": false
+    },
     "files.associations": {
         ".eslintrc": "jsonc",
         ".prettierrc": "jsonc",

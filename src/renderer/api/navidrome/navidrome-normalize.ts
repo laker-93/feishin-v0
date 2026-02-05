@@ -140,6 +140,7 @@ const normalizeSong = (
         serverType: ServerType.NAVIDROME,
         size: item.size,
         streamUrl: `${server?.url}/rest/stream.view?id=${id}&v=1.13.0&c=Feishin&${server?.credential}`,
+        subboxId: item.tags.subboxid ? item.tags.subboxid[0] : '',
         trackNumber: item.trackNumber,
         uniqueId: nanoid(),
         updatedAt: item.updatedAt,

@@ -578,7 +578,7 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
                         genreId.push(node.data.id);
                         break;
                     case LibraryItem.SONG:
-                        songId.push(node.data.id);
+                        songId.push(node.data.subboxId);
                         break;
                 }
             }
@@ -598,7 +598,7 @@ export const ContextMenuProvider = ({ children }: ContextMenuProviderProps) => {
                         genreId.push(item.id);
                         break;
                     case LibraryItem.SONG:
-                        songId.push(item.id);
+                        songId.push(item.subboxId);
                         break;
                 }
             }

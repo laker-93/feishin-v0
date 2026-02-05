@@ -9,8 +9,8 @@ async function getToken() {
     try {
         const response = await axios.post('http://localhost:8081/api/login', {
             // CHANGE THIS IN THE FRONTEND
-            password: 'test031124',
-            username: 'test031124', // CHANGE THIS IN THE FRONTEND
+            password: 'test080425',
+            username: 'test080425', // CHANGE THIS IN THE FRONTEND
         });
         console.log('Access token received.');
         return response.data;
@@ -30,7 +30,7 @@ async function uploadFile(token) {
     try {
         // Send a POST request to the FileBrowser server
         const res = await axios.post(
-            'http://localhost:8081/api/resources/downloads/test.txt?override=true',
+            'http://localhost:8081/api/resources/downloads/test.txt?override=false',
             fileContents,
             {
                 headers: {
@@ -40,6 +40,7 @@ async function uploadFile(token) {
             },
         );
 
+        console.log(res);
         console.log('File uploaded successfully:', res.data);
     } catch (error) {
         console.error('Error while uploading file:', error);
@@ -47,6 +48,7 @@ async function uploadFile(token) {
 }
 
 // Function to download a text file from the FileBrowser server
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function downloadFile(token) {
     console.log('Downloading file...');
 
@@ -99,13 +101,38 @@ async function downloadFile(token) {
     }
 }
 
+// Function to download a text file from the FileBrowser server
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function listFiles(token) {
+    console.log('list files...');
+
+    // const url = 'https://browser.docker.localhost/browser/api/resources/uploads/foo/foo - bar/00 - Departed (Original Mix).mp3';
+    const url =
+        'https://browser.docker.localhost/browser/api/resources/uploads/bar/foo - bar/00 - Departed (Original Mix).mp3';
+
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                'X-Auth': `${token}`,
+            },
+            // todo remove this in prod. This is only needed for dev testing
+            httpsAgent: new https.Agent({
+                rejectUnauthorized: false,
+            }),
+        });
+        console.log('get resp');
+        console.log(response.data);
+    } catch (error) {
+        console.error('Error while requesting file download:', error);
+    }
+}
+
 // Main function to control the flow of the program
 async function main() {
     const token = await getToken();
 
     if (token) {
         await uploadFile(token);
-        await downloadFile(token);
     } else {
         console.log('No access token received. Aborting.');
     }

@@ -14,6 +14,10 @@ type CreateBody = {
 };
 type CreateArgs = { body: CreateBody };
 
+export type DeleteSongArgs = { serverId?: string; songIds: string[] };
+
+export type DeleteSongResponse = null | undefined;
+
 type LoginBody = {
     password: string;
     username: string;
@@ -216,6 +220,20 @@ const deleteDuplicates = async (): Promise<Array<string>> => {
 
     return res.body.data.duplicates_removed;
 };
+const deleteSong = async (args: DeleteSongArgs) => {
+    const res = await pymixApiClient().deleteSong({
+        body: {
+            ids: args.songIds,
+        },
+        query: null,
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to delete song');
+    }
+
+    return null;
+};
 
 const matchTracks = async (body: TracksArgs): Promise<MatchTrack[]> => {
     const res = await pymixApiClient().matchTracks({
@@ -234,6 +252,7 @@ export const pymixController = {
     beetsImportProgress,
     create,
     deleteDuplicates,
+    deleteSong,
     librarySize,
     login,
     matchTracks,

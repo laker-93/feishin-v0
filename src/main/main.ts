@@ -12,7 +12,7 @@ import { access, constants, readFile, writeFile, createWriteStream } from 'fs';
 import https from 'https';
 import path, { join } from 'path';
 import { deflate, inflate } from 'zlib';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import {
     app,
     BrowserWindow,
@@ -55,6 +55,7 @@ import devConfig from '../../url-config.json';
 import { extractPlaylists, ParsedTrack } from '/@/main/rekordbox-xml';
 import { extractTrackName } from '/@/main/extract-track-name';
 import { UploadTrack } from '/@/main/rekordbox-xml-types';
+import { collectTracks, zipCrates } from '/@/main/serato-crates';
 // eslint-disable-next-line import/order
 const fsp = require('fs').promises;
 
@@ -789,34 +790,32 @@ const unzipAndMerge = async (zipFilePath: string, targetDirPath: string) => {
     console.log('Unzip and merge completed.');
 };
 
+async function getFiles(directory: string, extensions: string[]): Promise<string[]> {
+    const files = await fsp.readdir(directory, { withFileTypes: true });
+
+    let allFiles: string[] = [];
+
+    for (const file of files) {
+        const filePath = join(directory, file.name);
+
+        if (file.isDirectory()) {
+            // Recursively read the directory
+            const subFiles = await getFiles(filePath, extensions);
+            allFiles = allFiles.concat(subFiles);
+        } else if (file.isFile() && extensions.some((ext) => file.name.endsWith(ext))) {
+            allFiles.push(filePath);
+        }
+    }
+
+    return allFiles;
+}
+
 ipcMain.handle(
     'sync-music-directory',
     async (event, directoryPath: string, username: string, fbToken: string) => {
         console.log('Syncing music directory:', directoryPath);
-        async function getFiles(directory: string, extension: string): Promise<string[]> {
-            // todo use glob instead but I can't seem to get that working
-            const files = await fsp.readdir(directory, { withFileTypes: true });
 
-            let allFiles: string[] = [];
-
-            for (const file of files) {
-                const filePath = join(directory, file.name);
-
-                if (file.isDirectory()) {
-                    // Recursively read the directory
-                    const subFiles = await getFiles(filePath, extension);
-                    allFiles = allFiles.concat(subFiles);
-                } else if (file.isFile() && file.name.endsWith(extension)) {
-                    allFiles.push(filePath);
-                }
-            }
-
-            return allFiles;
-        }
-
-        const musicFiles = await getFiles(directoryPath, 'mp3');
-        console.log('music files');
-        console.log(musicFiles);
+        const musicFiles = await getFiles(directoryPath, ['.mp3', '.flac', '.wav']);
 
         const clientTracks = [];
         for (const file of musicFiles) {
@@ -832,8 +831,6 @@ ipcMain.handle(
             }
         }
 
-        console.log('clientTracks:', clientTracks);
-
         // const pymixUrl = 'pymix';
         // const pymixUrl = 'https://pymix.sub-box.net';
         const pymixUrl = urlConfig.url.pymix;
@@ -848,6 +845,7 @@ ipcMain.handle(
                 params: {
                     username,
                 },
+                timeout: 0, // todo - re-enable timeouts, run background job and poll instead
             },
         );
         console.log('Sync response:', response.data);
@@ -860,6 +858,185 @@ ipcMain.handle(
             const musicDirPath = path.join(appPath);
             await unzipAndMerge(zipFilePath, musicDirPath);
         }
+    },
+);
+
+ipcMain.handle(
+    'upload-from-serato',
+    async (event, token: string, username: string): Promise<UploadTrack[]> => {
+        const tracks = collectTracks();
+        const trackKeyToTrack: Record<string, ParsedTrack> = {};
+        const clientTracks = [];
+        for (const track of tracks) {
+            if (track.trackMeta?.title === null) {
+                throw new Error(`Track title is null for track: ${JSON.stringify(track)}`);
+            }
+            if (track.trackMeta.artist === null) {
+                throw new Error(`Track artist is null for track: ${JSON.stringify(track)}`);
+            }
+            const cleanName = extractTrackName(
+                track.trackMeta.title,
+                track.trackMeta.artist,
+                track.trackMeta.album ?? undefined,
+            );
+            const key = `${track.trackMeta.artist} - ${cleanName}`;
+            const fileExtension = path.extname(track.path.toString());
+            const parsedTrack: ParsedTrack = {
+                album: track.trackMeta?.album,
+                artist: track.trackMeta?.artist,
+                cleanName,
+                fileExtension,
+                location: track.path,
+                name: track.trackMeta?.title,
+                totalTime: '',
+            };
+            trackKeyToTrack[key] = parsedTrack;
+            clientTracks.push({
+                album: track.trackMeta.album,
+                artist: track.trackMeta.artist,
+                fileExtension,
+                title: cleanName,
+            });
+        }
+
+        const fileName = 'all-crates.zip';
+        const outputPath = path.join(getAppPath(), fileName);
+        await zipCrates({ outputZip: outputPath });
+        const baseUrl = urlConfig.url.filebrowser;
+        const resourcePath = `${baseUrl}/api/resources/uploads/${fileName}?override=true`;
+        const stream = fs.createReadStream(outputPath);
+        const resp = await axios.post(resourcePath, stream, {
+            headers: {
+                'Content-Type': 'application/zip',
+                'X-Auth': `${token}`,
+            },
+            // todo remove this in prod. This is only needed for dev testing
+            httpsAgent,
+        });
+
+        if (resp.status !== 200) {
+            throw new Error(`Failed to upload xml: ${resp.status} ${resp.statusText}`);
+        }
+
+        const pymixUrl = urlConfig.url.pymix;
+        const response = await axios.post(
+            `${pymixUrl}/sync/match_tracks`,
+            {
+                tracks: clientTracks,
+            },
+            {
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
+                params: {
+                    username,
+                },
+            },
+        );
+        console.log('match tracks', response.data.tracks);
+        const missingTracks = [];
+        for (const track of response.data.tracks) {
+            if (track.matched === false) {
+                missingTracks.push(track);
+            }
+        }
+
+        console.log('missing tracks to be uploaded', missingTracks);
+        const uploadedTracks = [];
+        const originalTrackMetaData = [];
+        for (const missingTrack of missingTracks) {
+            const trackName = `${missingTrack.artist} - ${missingTrack.title}`;
+            const track = trackKeyToTrack[trackName];
+            // const baseUrl = 'https://browser.sub-box.net/browser'
+            if (!track || !track.location) {
+                const msg = `Track metadata missing for "${trackName}", skipping`;
+                console.warn(msg);
+                throw new Error(msg);
+            }
+
+            if (!fs.existsSync(track.location)) {
+                const msg = `Track file does not exist at ${track.location}, skipping "${trackName}"`;
+                console.warn(msg);
+                throw new Error(msg);
+            }
+            const baseUrl = urlConfig.url.filebrowser;
+            const stagingPath = `${track.artist}/${track.album}/${track.cleanName}${track.fileExtension}`;
+            const resourcePath = `${baseUrl}/api/resources/uploads/${stagingPath}?override=false`;
+
+            const fileContents = fs.readFileSync(track.location);
+
+            let resp: AxiosResponse | null = null;
+            let shouldAbort = false;
+            // if file is already there in staging path, do not re upload it
+            try {
+                resp = await axios.post(resourcePath, fileContents, {
+                    headers: {
+                        'Content-Type': 'audio/mpeg', // ADJUST THIS PER FILETYPE (img, pdf, etc)
+                        'X-Auth': `${token}`,
+                    },
+                    // todo remove this in prod. This is only needed for dev testing
+                    httpsAgent,
+                });
+            } catch (err) {
+                if (axios.isAxiosError(err) && err.response?.status === 409) {
+                    // file already exists
+                    console.log(`file ${track} already exists`);
+                    originalTrackMetaData.push({
+                        originalAlbum: track.album,
+                        originalArtist: track.artist,
+                        originalName: track.name,
+                        stagingLocation: stagingPath,
+                        userLocation: track.location,
+                    });
+                } else {
+                    console.warn(
+                        'Upload failed; aborting remaining uploads',
+                        axios.isAxiosError(err)
+                            ? { data: err.response?.data, status: err.response?.status }
+                            : err,
+                    );
+                    shouldAbort = true;
+                }
+            }
+            if (shouldAbort) {
+                break;
+            }
+
+            if (resp) {
+                if (resp.status !== 200) {
+                    throw new Error(
+                        `Failed to create an upload: ${resp.status} ${resp.statusText}`,
+                    );
+                }
+                originalTrackMetaData.push({
+                    originalAlbum: track.album,
+                    originalArtist: track.artist,
+                    originalName: track.name,
+                    stagingLocation: stagingPath,
+                    userLocation: track.location,
+                });
+                uploadedTracks.push({
+                    artist: track.artist,
+                    title: track.cleanName,
+                });
+            }
+        }
+        console.log('uploaded tracks', uploadedTracks);
+        const mapMetaResponse = await axios.post(
+            `${pymixUrl}/sync/map_meta`,
+            {
+                tracks: originalTrackMetaData,
+            },
+            {
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
+                params: {
+                    username,
+                },
+            },
+        );
+        console.log('map meta response: ', mapMetaResponse);
+
+        return uploadedTracks;
     },
 );
 
@@ -928,39 +1105,94 @@ ipcMain.handle(
             }
         }
 
+        const originalTrackMetaData = [];
+        console.log('missing tracks to be uploaded', missingTracks);
         const uploadedTracks = [];
         for (const missingTrack of missingTracks) {
             const trackName = `${missingTrack.artist} - ${missingTrack.title}`;
             const track = trackKeyToTrack[trackName];
             // const baseUrl = 'https://browser.sub-box.net/browser'
+            if (!track || !track.location) {
+                const msg = `Track metadata missing for "${trackName}", skipping`;
+                console.warn(msg);
+                throw new Error(msg);
+            }
+
+            if (!fs.existsSync(track.location)) {
+                const msg = `Track file does not exist at ${track.location}, skipping "${trackName}"`;
+                console.warn(msg);
+                throw new Error(msg);
+            }
             const baseUrl = urlConfig.url.filebrowser;
-            const resourcePath = `${baseUrl}/api/resources/uploads/${track.artist}/${track.album}/${track.cleanName}${track.fileExtension}?override=true`;
+            const stagingPath = `${track.artist}/${track.album}/${track.cleanName}${track.fileExtension}`;
+            const resourcePath = `${baseUrl}/api/resources/uploads/${stagingPath}?override=false`;
 
             const fileContents = fs.readFileSync(track.location);
-            const resp = await axios.post(resourcePath, fileContents, {
-                headers: {
-                    'Content-Type': 'audio/mpeg', // ADJUST THIS PER FILETYPE (img, pdf, etc)
-                    'X-Auth': `${token}`,
-                },
-                // todo remove this in prod. This is only needed for dev testing
-                httpsAgent,
-            });
 
-            if (resp.status !== 200) {
-                throw new Error(`Failed to create an upload: ${resp.status} ${resp.statusText}`);
-            } else {
+            let resp: AxiosResponse | null = null;
+            let fileAlreadyExists = false;
+            // if file is already there in staging path, do not re upload it
+            try {
+                resp = await axios.post(resourcePath, fileContents, {
+                    headers: {
+                        'Content-Type': 'audio/mpeg', // ADJUST THIS PER FILETYPE (img, pdf, etc)
+                        'X-Auth': `${token}`,
+                    },
+                    // todo remove this in prod. This is only needed for dev testing
+                    httpsAgent,
+                });
+            } catch (err) {
+                if (axios.isAxiosError(err) && err.response?.status === 409) {
+                    fileAlreadyExists = true;
+                } else {
+                    throw err;
+                }
+            }
+
+            if (!fileAlreadyExists) {
+                if (!resp || resp.status !== 200) {
+                    throw new Error(
+                        `Failed to create an upload: ${resp?.status} ${resp?.statusText}`,
+                    );
+                }
+
                 uploadedTracks.push({
                     artist: track.artist,
                     title: track.cleanName,
                 });
             }
+
+            originalTrackMetaData.push({
+                originalAlbum: track.album,
+                originalArtist: track.artist,
+                originalName: track.name,
+                stagingLocation: stagingPath,
+                userLocation: track.location,
+            });
         }
         console.log('uploaded tracks', uploadedTracks);
+        const mapMetaResponse = await axios.post(
+            `${pymixUrl}/sync/map_meta`,
+            {
+                tracks: originalTrackMetaData,
+            },
+            {
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
+                params: {
+                    username,
+                },
+            },
+        );
+        console.log('map meta response: ', mapMetaResponse);
+
         return uploadedTracks;
     },
 );
 
 ipcMain.handle('download-rb-xml', async (event, fbToken: string) => {
+    console.log('Downloading Rekordbox XML...');
+
     downloadFile(fbToken, 'subbox_rb_export.xml');
     return null;
 });
@@ -978,15 +1210,30 @@ async function handleFileChange(filePath: string): Promise<{ reason?: string; su
         const relativePath = path.relative(watchDirectoryPath!, filePath);
         const fileContents = fs.readFileSync(filePath);
         const baseUrl = urlConfig.url.filebrowser;
+
         // todo set name of upload path to path of file without the watchdir root
-        const resourcePath = `${baseUrl}/api/resources/watch/${relativePath}?override=true`;
-        const resp = await axios.post(resourcePath, fileContents, {
-            headers: {
-                'Content-Type': 'audio/mpeg', // Adjust this per file type (img, pdf, etc)
-                'X-Auth': `${authToken}`,
-            },
-            httpsAgent,
-        });
+        const resourcePath = `${baseUrl}/api/resources/watch/${relativePath}?override=false`;
+
+        let resp: AxiosResponse;
+        // if file is already there in staging path, do not re upload it
+        try {
+            resp = await axios.post(resourcePath, fileContents, {
+                headers: {
+                    'Content-Type': 'audio/mpeg', // ADJUST THIS PER FILETYPE (img, pdf, etc)
+                    'X-Auth': `${authToken}`,
+                },
+                // todo remove this in prod. This is only needed for dev testing
+                httpsAgent,
+            });
+        } catch (err) {
+            if (axios.isAxiosError(err) && err.response?.status === 409) {
+                // file already exists
+                resp = err.response; // normalize 409
+            } else {
+                throw err;
+            }
+        }
+
         if (resp.status !== 200) {
             const reason = `Failed to create an upload: ${resp.status} ${resp.statusText}`;
             console.error(reason);

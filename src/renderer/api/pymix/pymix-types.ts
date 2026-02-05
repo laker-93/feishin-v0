@@ -33,6 +33,14 @@ const deleteDuplicates = z.object({
     reason: z.string(),
     success: z.boolean(),
 });
+
+const deleteSong = z.null();
+
+const deleteSongParameters = z.object({
+    ids: z.array(z.string()),
+    username: z.optional(z.string()),
+});
+
 const importJob = z.object({
     job_id: z.string(),
     max_library_size_exceeded: z.boolean(),
@@ -136,6 +144,7 @@ export const pymixType = {
     _parameters: {
         create: createParameters,
         deleteDuplicates: deleteParameters,
+        deleteSong: deleteSongParameters,
         exportJob: rbExportParameters,
         import: importParameters,
         importProgress: importProgressParameters,
@@ -150,6 +159,7 @@ export const pymixType = {
         beetsImportProgress,
         create,
         deleteDuplicates,
+        deleteSong,
         error,
         exportJob,
         importJob,

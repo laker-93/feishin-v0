@@ -85,7 +85,7 @@ const processImport = async (
         if (isRBImport) {
             importResult = await pymixController.rbImport();
         } else if (isSeratoImport) {
-            await pymixController.seratoImport();
+            importResult = await pymixController.seratoImport();
         } else {
             importResult = await pymixController.beetsImport({ query: { public: isPublic } });
         }
@@ -221,6 +221,35 @@ export const UploadContent = () => {
             );
             return newHistory;
         });
+    };
+
+    const handleSeratoUpload = async () => {
+        console.log('serato upload');
+        if (server.fbToken === undefined) {
+            throw new Error('FB Server is not authenticated');
+        }
+
+        try {
+            setIsUploading(true);
+            if (userFS) {
+                await userFS.uploadFromSerato(server.fbToken, server.username);
+            }
+            console.log('process import');
+
+            setIsUploading(false);
+            setIsProcessing(true);
+            const result = await processImport(false, false, true, updateUploadStatus);
+            if (result === 'librarySizeExceeded') {
+                setIsLimitExceededModalOpen(true);
+            }
+            setIsProcessing(false);
+        } catch (error) {
+            setIsUploading(false);
+            setIsProcessing(false);
+            console.error('Error uploading files:', error);
+        }
+        setFiles([]); // Clear the files after upload
+        setSelectedDropZoneFiles(new Set()); // Clear selected files after upload
     };
 
     const handleDesktopUpload = async () => {
@@ -418,6 +447,14 @@ export const UploadContent = () => {
                 </Dropzone>
             )}
             <Box mt={2}>
+                {isElectron() && importType === 'serato' && (
+                    <Group
+                        mt="md"
+                        position="center"
+                    >
+                        <Button onClick={handleSeratoUpload}>Serato Upload</Button>
+                    </Group>
+                )}
                 {files.length > 0 && (
                     <Box>
                         <Text>Files to be uploaded:</Text>
@@ -576,7 +613,36 @@ export const UploadContent = () => {
                             size="md"
                             weight={700}
                         >
-                            How to import XML into RekordBox
+                            How to import XML into RekordBox (desktop)
+                        </Text>
+
+                        <List
+                            center
+                            withPadding
+                            size="sm"
+                        >
+                            <List.Item mb={20}>
+                                Backup your collection as xml (File -&gt; Export Collection in xml
+                                format). Save it as &apos;rekordbox-backup.xml&apos;. This contains
+                                all the playlist data needed to create your playlists in subbox.
+                            </List.Item>
+                            <List.Item mb={20}>
+                                Once the above has been completed in rekordbox, upload the resulting
+                                xml in the above box and tick the &apos;Rekordbox import&apos; check
+                                box.
+                            </List.Item>
+                            <List.Item mb={20}>
+                                The subbox desktop app will then upload the tracks from your
+                                machine. tick the &apos;Rekordbox import&apos; check box.
+                            </List.Item>
+                        </List>
+                        <Text
+                            align="center"
+                            mb={10}
+                            size="md"
+                            weight={700}
+                        >
+                            How to import XML into RekordBox (web)
                         </Text>
 
                         <List
@@ -628,7 +694,28 @@ export const UploadContent = () => {
                             size="md"
                             weight={700}
                         >
-                            How to import crates into Serato
+                            How to import crates into Serato (desktop)
+                        </Text>
+                        <List
+                            center
+                            withPadding
+                            size="sm"
+                        >
+                            <List.Item mb={20}>Select Serato</List.Item>
+                            <List.Item mb={20}>Press Import</List.Item>
+                            <List.Item mb={20}>
+                                Subbox will parse your serato crates and upload any tracks
+                                automatically
+                            </List.Item>
+                        </List>
+
+                        <Text
+                            align="center"
+                            mb={10}
+                            size="md"
+                            weight={700}
+                        >
+                            How to import crates into Serato (web)
                         </Text>
                         <List
                             center

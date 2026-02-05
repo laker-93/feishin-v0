@@ -227,6 +227,7 @@ export type Song = {
     serverType: ServerType;
     size: number;
     streamUrl: string;
+    subboxId: string;
     trackNumber: number;
     uniqueId: string;
     updatedAt: string;
@@ -591,22 +592,6 @@ export type SongDetailArgs = { query: SongDetailQuery } & BaseEndpointArgs;
 export type SongInfoQuery = { id: string };
 
 export type SongInfoArgs = { query: SongInfoQuery } & BaseEndpointArgs;
-
-// Delete Song
-export type DeleteSongResponse = null | undefined;
-
-export type DeleteSongQuery = null;
-
-export type DeleteSongBody = {
-    songId: string[];
-    user: string;
-};
-
-export type DeleteSongArgs = {
-    body: DeleteSongBody;
-    query: DeleteSongQuery;
-    serverId?: string;
-} & BaseEndpointArgs;
 
 // Album Artist List
 export type AlbumArtistListResponse = BasePaginatedResponse<AlbumArtist[]> | null | undefined;
@@ -1316,7 +1301,6 @@ export type ControllerEndpoint = {
     createPlaylist: (args: CreatePlaylistArgs) => Promise<CreatePlaylistResponse>;
     deleteFavorite: (args: FavoriteArgs) => Promise<FavoriteResponse>;
     deletePlaylist: (args: DeletePlaylistArgs) => Promise<DeletePlaylistResponse>;
-    deleteSong: (args: DeleteSongArgs) => Promise<DeleteSongResponse>;
     getAlbumArtistDetail: (args: AlbumArtistDetailArgs) => Promise<AlbumArtistDetailResponse>;
     getAlbumArtistList: (args: AlbumArtistListArgs) => Promise<AlbumArtistListResponse>;
     getAlbumArtistListCount: (args: AlbumArtistListArgs) => Promise<number>;

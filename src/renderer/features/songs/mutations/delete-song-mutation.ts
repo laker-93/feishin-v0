@@ -1,8 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { api } from '/@/renderer/api';
+import {
+    pymixController,
+    DeleteSongArgs,
+    DeleteSongResponse,
+} from '/@/renderer/api/pymix/pymix-controller';
 import { queryKeys } from '/@/renderer/api/query-keys';
-import { DeleteSongArgs, DeleteSongResponse, SongListSort, SortOrder } from '/@/renderer/api/types';
+import { SongListSort, SortOrder } from '/@/renderer/api/types';
 import { MutationHookArgs } from '/@/renderer/lib/react-query';
 import { getServerById } from '/@/renderer/store';
 
@@ -19,7 +23,7 @@ export const useDeleteSong = (args: MutationHookArgs) => {
         mutationFn: (args) => {
             const server = getServerById(args.serverId);
             if (!server) throw new Error('Server not found');
-            return api.controller.deleteSong({ ...args, apiClientProps: { server } });
+            return pymixController.deleteSong(args);
         },
         onSuccess: (_data, variables) => {
             const { serverId } = variables;
