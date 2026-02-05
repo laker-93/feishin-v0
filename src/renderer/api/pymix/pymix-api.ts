@@ -29,6 +29,16 @@ export const contract = c.router({
             500: resultWithHeaders(pymixType._response.error),
         },
     },
+    deleteSong: {
+        body: pymixType._parameters.deleteSong,
+        method: 'DELETE',
+        path: 'track',
+        query: null,
+        responses: {
+            200: resultWithHeaders(pymixType._response.deleteSong),
+            500: resultWithHeaders(pymixType._response.error),
+        },
+    },
     getLibrarySize: {
         method: 'GET',
         path: 'user/library_size',

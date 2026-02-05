@@ -212,6 +212,9 @@ const song = z.object({
     starred: z.boolean(),
     starredAt: z.string().optional(),
     suffix: z.string(),
+    tags: z.object({
+        subboxid: z.string(),
+    }),
     title: z.string(),
     trackNumber: z.number(),
     updatedAt: z.string(),
@@ -284,19 +287,12 @@ const updatePlaylistParameters = createPlaylistParameters.partial();
 
 const deletePlaylist = z.null();
 
-const deleteSong = z.null();
-
 const addToPlaylist = z.object({
     added: z.number(),
 });
 
 const addToPlaylistParameters = z.object({
     ids: z.array(z.string()),
-});
-
-const deleteSongParameters = z.object({
-    ids: z.array(z.string()),
-    user: z.string(),
 });
 
 const removeFromPlaylist = z.object({
@@ -356,7 +352,6 @@ export const ndType = {
         authenticate: authenticateParameters,
         beetTrack: beetTrackParameters,
         createPlaylist: createPlaylistParameters,
-        deleteSong: deleteSongParameters,
         genreList: genreListParameters,
         moveItem: moveItemParameters,
         playlistList: playlistListParameters,
@@ -376,7 +371,6 @@ export const ndType = {
         beetResults,
         createPlaylist,
         deletePlaylist,
-        deleteSong,
         error,
         genre,
         genreList,

@@ -107,22 +107,6 @@ export const NavidromeController: ControllerEndpoint = {
 
         return null;
     },
-    deleteSong: async (args) => {
-        const { body, apiClientProps } = args;
-        const res = await ndApiClient(apiClientProps).deleteSong({
-            body: {
-                ids: body.songId,
-                user: body.user,
-            },
-            query: null,
-        });
-
-        if (res.status !== 200) {
-            throw new Error('Failed to delete song');
-        }
-
-        return null;
-    },
     getAlbumArtistDetail: async (args) => {
         const { query, apiClientProps } = args;
 

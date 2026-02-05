@@ -68,14 +68,14 @@ export const DeleteSongContextModal = ({
         if (albumId && albumId.length > 0) {
             for (const id of albumId) {
                 const songs = await getSongsByAlbum(id);
-                allSongIds.push(...(songs?.items?.map((song) => song.id) || []));
+                allSongIds.push(...(songs?.items?.map((song) => song.subboxId) || []));
             }
         }
 
         if (artistId && artistId.length > 0) {
             for (const id of artistId) {
                 const songs = await getSongsByArtist(id);
-                allSongIds.push(...(songs?.items?.map((song) => song.id) || []));
+                allSongIds.push(...(songs?.items?.map((song) => song.subboxId) || []));
             }
         }
 
@@ -85,7 +85,7 @@ export const DeleteSongContextModal = ({
                 queryClient,
                 server,
             });
-            allSongIds.push(...(songs?.items?.map((song) => song.id) || []));
+            allSongIds.push(...(songs?.items?.map((song) => song.subboxId) || []));
         }
 
         if (songId && songId.length > 0) {
@@ -95,9 +95,8 @@ export const DeleteSongContextModal = ({
         if (!server) return null;
         deleteSongMutation.mutate(
             {
-                body: { songId: allSongIds, user: server.username },
-                query: null,
                 serverId: server?.id,
+                songIds: allSongIds,
             },
             {
                 onError: (err) => {

@@ -81,9 +81,6 @@ export const controller: GeneralController = {
     deletePlaylist(args) {
         return apiController('deletePlaylist', args.apiClientProps.server?.type)?.(args);
     },
-    deleteSong(args) {
-        return apiController('deleteSong', args.apiClientProps.server?.type)?.(args);
-    },
     getAlbumArtistDetail(args) {
         return apiController('getAlbumArtistDetail', args.apiClientProps.server?.type)?.(args);
     },
