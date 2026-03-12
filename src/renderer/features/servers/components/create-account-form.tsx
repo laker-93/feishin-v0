@@ -95,7 +95,7 @@ export const CreateAccountForm = ({ onCancel }: CreateAccountFormProps) => {
                 });
             }
 
-            const url = `${urlConfig.url.navidrome_user}${values.username}`;
+            const url = urlConfig.url.navidrome_user.replace('{user}', values.username);
 
             try {
                 setIsLoading(true);

@@ -2,25 +2,44 @@ import fs from 'fs';
 import https from 'https';
 import axios from 'axios';
 
+const fbUrl = 'https://browser.sub-box.net';
 // Function to get the access token from the FileBrowser server
 async function getToken() {
-    console.log('Requesting access token...');
-
     try {
-        const response = await axios.post('http://localhost:8081/api/login', {
-            // CHANGE THIS IN THE FRONTEND
-            password: 'test080425',
-            username: 'test080425', // CHANGE THIS IN THE FRONTEND
-        });
+        const response = await axios.post(
+            `${fbUrl}/browser/api/login`,
+            {
+                password: '1234test070326',
+                username: 'test070326',
+                // recaptcha: ""
+            },
+            {
+                // headers: {
+                //    "Content-Type": "application/json",
+                //    "Origin": "https://browser.sub-box.net",
+                //    "Referer": "https://browser.sub-box.net/browser/login"
+                // },
+                // credentials: 'include',
+                httpsAgent: new https.Agent({
+                    rejectUnauthorized: false,
+                }),
+            },
+        );
+
         console.log('Access token received.');
+        console.log(response.data);
+        console.log(response.headers);
         return response.data;
     } catch (error) {
-        console.error('Error while requesting access token:', error);
-        return null;
+        console.error('Login failed:');
+        console.error(error.response?.status);
+        console.error(error.response?.data);
+        return '';
     }
 }
 
 // Function to upload a text file to the FileBrowser server
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function uploadFile(token) {
     console.log('Uploading file...');
 
@@ -106,20 +125,21 @@ async function downloadFile(token) {
 async function listFiles(token) {
     console.log('list files...');
 
-    // const url = 'https://browser.docker.localhost/browser/api/resources/uploads/foo/foo - bar/00 - Departed (Original Mix).mp3';
-    const url =
-        'https://browser.docker.localhost/browser/api/resources/uploads/bar/foo - bar/00 - Departed (Original Mix).mp3';
+    const url = `${fbUrl}/browser/api/resources/uploads`;
+    console.log(url);
 
     try {
         const response = await axios.get(url, {
             headers: {
+                // Cookie: `auth=${token}`,
+                // Authorization: `Bearer ${token}`,
                 'X-Auth': `${token}`,
             },
-            // todo remove this in prod. This is only needed for dev testing
             httpsAgent: new https.Agent({
-                rejectUnauthorized: false,
+                rejectUnauthorized: false, // dev only
             }),
         });
+
         console.log('get resp');
         console.log(response.data);
     } catch (error) {
@@ -130,12 +150,15 @@ async function listFiles(token) {
 // Main function to control the flow of the program
 async function main() {
     const token = await getToken();
+    // console.log(token)
 
-    if (token) {
-        await uploadFile(token);
-    } else {
-        console.log('No access token received. Aborting.');
-    }
+    await listFiles(token);
+
+    // if (token) {
+    //    await uploadFile(token);
+    // } else {
+    //    console.log('No access token received. Aborting.');
+    // }
 }
 
 // Catch any unhandled Promise rejections

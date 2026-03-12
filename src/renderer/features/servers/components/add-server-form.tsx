@@ -59,7 +59,8 @@ export const AddServerForm = ({ onCancel }: AddServerFormProps) => {
         // const url = `http://localhost:4533`;
         // for production
         // const url = `https://www.sub-box.net/navidrome${values.username}`;
-        const url = `${urlConfig.url.navidrome_user}${values.username}`;
+        const url = urlConfig.url.navidrome_user.replace('{user}', values.username);
+        console.log(`querying url ${url}`);
 
         try {
             setIsLoading(true);
