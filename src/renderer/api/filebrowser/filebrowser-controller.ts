@@ -42,8 +42,9 @@ const authenticate = async (
     if (res.status !== 200) {
         throw new Error('Failed to authenticate');
     }
+    const token = res.body.data;
 
-    return res.body.data;
+    return token;
 };
 
 const download = async (

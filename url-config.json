@@ -2,7 +2,7 @@
     "url": {
         "ider": "http://localhost:8001",
         "pymix": "https://pymix.docker.localhost",
-        "navidrome_user": "https://docker.localhost/navidrome",
+        "navidrome_user": "https://navidrome{user}.docker.localhost",
         "navidrome_public": "https://docker.localhost/navidromepublic",
         "filebrowser": "https://browser.docker.localhost/browser"
     }

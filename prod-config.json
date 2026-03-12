@@ -2,7 +2,7 @@
     "url": {
         "ider": "http://localhost:8001",
         "pymix": "https://pymix.sub-box.net",
-        "navidrome_user": "https://www.sub-box.net/navidrome",
+        "navidrome_user": "https://navidrome{user}.sub-box.net",
         "navidrome_public": "https://www.sub-box.net/navidromepublic",
         "filebrowser": "https://browser.sub-box.net/browser"
     }
